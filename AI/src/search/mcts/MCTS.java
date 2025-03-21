@@ -855,6 +855,8 @@ public class MCTS extends ExpertPolicy
     	final Context context
     )
 	{
+		// TODO detect when PN-MCTS node is necessary and use that
+		
 		if ((currentGameFlags & GameType.Stochastic) == 0L || wantsCheatRNG())
 		{
 			if (useScoreBounds)
