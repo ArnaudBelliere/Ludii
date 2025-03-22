@@ -16,6 +16,11 @@ public final class PNMCTSNode extends DeterministicNode
 	
 	//-------------------------------------------------------------------------
 	
+	/**
+	 * Nodes types in search trees in PN-MCTS
+	 * 
+	 * @author Dennis Soemers
+	 */
 	public enum PNMCTSNodeTypes 
 	{
         /** An OR node */
@@ -25,18 +30,38 @@ public final class PNMCTSNode extends DeterministicNode
         AND_NODE
     }
 	
+	/**
+	 * Values of nodes in search trees in PN-MCTS
+	 * 
+	 * @author Dennis Soemers
+	 */
+	public enum PNMCTSNodeValues
+	{
+		/** A proven node */
+		TRUE,
+		
+		/** A disproven node */
+		FALSE,
+		
+		/** Unknown node (yet to prove or disprove) */
+		UNKNOWN
+	}
+	
 	//-------------------------------------------------------------------------
 	
 	/** Proof number for this node */
-	protected int proofNumber;
+	protected double proofNumber;
 	/** Disproof number for this node */
-	protected int disproofNumber;
+	protected double disproofNumber;
 	
 	/** The player to move in the root node of the tree this node is in. */
 	protected int rootPlayer;
 	
 	/** what type of node are we? */
 	protected PNMCTSNodeTypes type;
+	
+	/** The value (in terms of proven/disproven/dont know) for this node */
+	protected PNMCTSNodeValues proofValue;
 	
 	//-------------------------------------------------------------------------
     
@@ -95,17 +120,135 @@ public final class PNMCTSNode extends DeterministicNode
         {
             if (RankUtils.utilities(this.context)[rootPlayer] == 1.0) 
             {
-                this.value = PNSNodeValues.TRUE;
+                this.proofValue = PNMCTSNodeValues.TRUE;
             } 
             else 
             {
-                this.value = PNSNodeValues.FALSE;
+                this.proofValue = PNMCTSNodeValues.FALSE;
             }
         } 
         else 
         {
-            this.value = PNSNodeValues.UNKNOWN;
+            this.proofValue = PNMCTSNodeValues.UNKNOWN;
         }
+    }
+    
+    /**
+     * Sets the proof and disproof values of the current node as it is done for 
+     * PNS in L. V. Allis' "Searching for Solutions in Games and Artificial 
+     * Intelligence". Set differently depending on if the node has children yet.
+     *
+     * @return Returns true if something was changed and false if not. 
+     * Used to improve PN-MCTS speed.
+     */
+    public boolean setProofAndDisproofNumbers() 
+    {
+    	// TODO probably need to re-think how this should work due to not fully
+    	// expanding nodes at once?
+    	
+        // If this node has child nodes
+        if (this.numUnvisitedChildren > 0) 
+        {
+        	double proof;
+        	double disproof;
+        	switch (type)
+        	{
+			case AND_NODE:
+				proof = 0.0;
+				disproof = Double.POSITIVE_INFINITY;
+				for (final BaseNode child : children)
+				{
+					final PNMCTSNode childNode = (PNMCTSNode) child;
+					if (childNode != null)
+					{
+						proof += childNode.proofNumber;
+						
+						if (childNode.disproofNumber < disproof)
+						{
+							disproof = childNode.disproofNumber;
+						}
+					}
+				}
+
+                // If nothing changed return false
+                if (this.proofNumber == proof && this.disproofNumber == disproof) 
+                {
+                    return false;
+                } 
+                else 
+                {
+                    this.proofNumber = proof;
+                    this.disproofNumber = disproof;
+                    return true;
+                }
+				break;
+			case OR_NODE:
+				disproof = 0.0;
+				proof = Double.POSITIVE_INFINITY;
+				
+				for (final BaseNode child : children)
+				{
+					final PNMCTSNode childNode = (PNMCTSNode) child;
+					if (childNode != null)
+					{
+						disproof += childNode.disproofNumber;
+						
+						if (childNode.proofNumber < proof)
+						{
+							proof = childNode.proofNumber;
+						}
+					}
+				}
+
+                // If nothing changed return false
+                if (this.proofNumber == proof && this.disproofNumber == disproof) 
+                {
+                    return false;
+                } 
+                else 
+                {
+                    this.proofNumber = proof;
+                    this.disproofNumber = disproof;
+                    return true;
+                }
+				break;
+			default:
+				System.err.println("Unknown node type in PNMCTSNode.setProofAndDisproofNumbers()");
+				break;
+        	}
+        } 
+        else 
+        {
+        	switch (proofValue)
+        	{
+			case FALSE:
+				this.proofNumber = Double.POSITIVE_INFINITY;
+				this.disproofNumber = 0.0;
+				break;
+			case TRUE:
+				break;
+			case UNKNOWN:
+				break;
+			default:
+				System.err.println("Unknown proof value in PNMCTSNode.setProofAndDisproofNumbers()");
+				break;
+        	}
+        	
+            // (Dis)proof numbers are set according to evaluation until properly checked
+            if (this.value == PNSNodeValues.FALSE) {
+                this.proofNum = Double.POSITIVE_INFINITY;
+                this.disproofNum = 0;
+            } else if (this.value == PNSNodeValues.TRUE) {
+                this.proofNum = 0;
+                this.disproofNum = Double.POSITIVE_INFINITY;
+            } else if (this.value == PNSNodeValues.UNKNOWN) {
+                this.proofNum = 1;
+                this.disproofNum = 1;
+            }
+        }
+        
+        // If we haven't expanded yet it will definitely be changed so return true
+        return true;
     }
     
     //-------------------------------------------------------------------------
