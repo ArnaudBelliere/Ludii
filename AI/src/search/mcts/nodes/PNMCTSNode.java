@@ -4,7 +4,6 @@ import other.RankUtils;
 import other.context.Context;
 import other.move.Move;
 import search.mcts.MCTS;
-import search.pns.PNSNode.PNSNodeValues;
 
 /**
  * Node for PN-MCTS tree.
@@ -181,7 +180,6 @@ public final class PNMCTSNode extends DeterministicNode
                     this.disproofNumber = disproof;
                     return true;
                 }
-				break;
 			case OR_NODE:
 				disproof = 0.0;
 				proof = Double.POSITIVE_INFINITY;
@@ -211,7 +209,6 @@ public final class PNMCTSNode extends DeterministicNode
                     this.disproofNumber = disproof;
                     return true;
                 }
-				break;
 			default:
 				System.err.println("Unknown node type in PNMCTSNode.setProofAndDisproofNumbers()");
 				break;
@@ -226,25 +223,17 @@ public final class PNMCTSNode extends DeterministicNode
 				this.disproofNumber = 0.0;
 				break;
 			case TRUE:
+				this.proofNumber = 0.0;
+				this.disproofNumber = Double.POSITIVE_INFINITY;
 				break;
 			case UNKNOWN:
+				this.proofNumber = 1.0;
+				this.disproofNumber = 1.0;
 				break;
 			default:
 				System.err.println("Unknown proof value in PNMCTSNode.setProofAndDisproofNumbers()");
 				break;
         	}
-        	
-            // (Dis)proof numbers are set according to evaluation until properly checked
-            if (this.value == PNSNodeValues.FALSE) {
-                this.proofNum = Double.POSITIVE_INFINITY;
-                this.disproofNum = 0;
-            } else if (this.value == PNSNodeValues.TRUE) {
-                this.proofNum = 0;
-                this.disproofNum = Double.POSITIVE_INFINITY;
-            } else if (this.value == PNSNodeValues.UNKNOWN) {
-                this.proofNum = 1;
-                this.disproofNum = 1;
-            }
         }
         
         // If we haven't expanded yet it will definitely be changed so return true
