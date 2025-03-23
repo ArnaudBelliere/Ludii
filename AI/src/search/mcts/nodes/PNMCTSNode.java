@@ -145,12 +145,9 @@ public final class PNMCTSNode extends DeterministicNode
      */
     public boolean setProofAndDisproofNumbers() 
     {
-    	// TODO probably need to re-think how this should work due to not fully
-    	// expanding nodes at once?
-    	
-        // If this node has child nodes
-        if (this.numUnvisitedChildren > 0) 
+        if (legalMoves.length > 0) 
         {
+        	// Not a terminal node
         	double proof;
         	double disproof;
         	switch (type)
@@ -169,6 +166,14 @@ public final class PNMCTSNode extends DeterministicNode
 						{
 							disproof = childNode.disproofNumber;
 						}
+					}
+					else
+					{
+						// An unexpanded child
+						// TODO verify that this is indeed what we want to do?
+						// NOTE: addition for proof, setting for disproof
+						proof += 1.0;
+						disproof = 1.0;
 					}
 				}
 
@@ -197,6 +202,14 @@ public final class PNMCTSNode extends DeterministicNode
 							proof = childNode.proofNumber;
 						}
 					}
+					else
+					{
+						// An unexpanded child
+						// TODO verify that this is indeed what we want to do?
+						// NOTE: addition for disproof, setting for proof
+						disproof += 1.0;
+						proof = 1.0;
+					}
 				}
 
                 // If nothing changed return false
@@ -207,6 +220,12 @@ public final class PNMCTSNode extends DeterministicNode
                 
 				this.proofNumber = proof;
 				this.disproofNumber = disproof;
+				
+				if (proof == 0.0)
+					proofValue = PNMCTSNodeValues.TRUE;
+				else if (disproof == 0.0)
+					proofValue = PNMCTSNodeValues.FALSE;
+				
 				return true;
 			default:
 				System.err.println("Unknown node type in PNMCTSNode.setProofAndDisproofNumbers()");
@@ -215,6 +234,7 @@ public final class PNMCTSNode extends DeterministicNode
         } 
         else 
         {
+        	// Terminal node!
         	switch (proofValue)
         	{
 			case FALSE:
@@ -226,8 +246,7 @@ public final class PNMCTSNode extends DeterministicNode
 				this.disproofNumber = Double.POSITIVE_INFINITY;
 				break;
 			case UNKNOWN:
-				this.proofNumber = 1.0;
-				this.disproofNumber = 1.0;
+				System.err.println("Terminal node has UNKNOWN proof value in PNMCTSNode!");
 				break;
 			default:
 				System.err.println("Unknown proof value in PNMCTSNode.setProofAndDisproofNumbers()");
@@ -239,15 +258,47 @@ public final class PNMCTSNode extends DeterministicNode
         return true;
     }
     
-    //-------------------------------------------------------------------------
+    /**
+     * @return Do our childrens' PNS-based selection terms need updating?
+     */
+    public boolean childSelectionScoresDirty()
+    {
+    	return childSelectionScoresDirty;
+    }
     
     /**
-     * Store a flag saying that the cached PNS-based terms of our childrens'
+     * Store a flag saying whether the cached PNS-based terms of our childrens'
      * selection scores are (potentially) outdated.
+     * 
+     * @param newFlag
      */
-    public void markChildSelectionScoresDirty()
+    public void setSelectionScoresDirtyFlag(final boolean newFlag)
     {
-    	childSelectionScoresDirty = true;	// TODO selection strategy will have to account for this
+    	childSelectionScoresDirty = newFlag;	// TODO selection strategy will have to account for this
+    }
+    
+    /**
+     * @return Current proof number for this node.
+     */
+    public double proofNumber()
+    {
+    	return proofNumber;
+    }
+    
+    /**
+     * @return Current disproof number for this node.
+     */
+    public double disproofNumber()
+    {
+    	return disproofNumber;
+    }
+    
+    //-------------------------------------------------------------------------
+    
+    @Override
+    public boolean isValueProven(final int agent)
+    {
+    	return (proofValue != PNMCTSNodeValues.UNKNOWN);
     }
     
 	//-------------------------------------------------------------------------

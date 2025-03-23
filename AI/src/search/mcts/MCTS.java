@@ -593,6 +593,8 @@ public class MCTS extends ExpertPolicy
 							
 							while (current.contextRef().trial().status() == null)
 							{
+								// TODO should break early for proven nodes and backpropagate proven value
+								
 								BaseNode prevNode = current;
 								prevNode.getLock().lock();
 
@@ -1210,6 +1212,9 @@ public class MCTS extends ExpertPolicy
 		
 		if (learnedSelectionPolicy != null && !learnedSelectionPolicy.supportsGame(game))
 			return false;
+		
+		if ((gameFlags & GameType.Stochastic) != 0L && (backpropFlags & BackpropagationStrategy.PROOF_DISPROOF_NUMBERS) != 0)
+			return false;	// cannot handle proof numbers in stochastic games
 		
 		return playoutStrategy.playoutSupportsGame(game);
 	}

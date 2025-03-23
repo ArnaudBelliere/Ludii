@@ -156,7 +156,7 @@ public abstract class BackpropagationStrategy
 					updateProofNumbers = pnmctsNode.setProofAndDisproofNumbers();
 					if (pnmctsNode.children().length > 0) 
 					{
-						pnmctsNode.markChildSelectionScoresDirty();
+						pnmctsNode.setSelectionScoresDirtyFlag(true);
                     }
 				}
 				else
