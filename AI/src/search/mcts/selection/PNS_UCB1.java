@@ -1,6 +1,7 @@
 package search.mcts.selection;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
@@ -11,7 +12,7 @@ import search.mcts.MCTS;
 import search.mcts.backpropagation.BackpropagationStrategy;
 import search.mcts.nodes.BaseNode;
 import search.mcts.nodes.PNMCTSNode;
-import search.pns.PNSNode.PNSNodeTypes;
+import search.mcts.nodes.PNMCTSNode.PNMCTSNodeTypes;
 
 /**
  * A UCB1-based selection strategy that also includes a 
@@ -119,8 +120,10 @@ public final class PNS_UCB1 implements SelectionStrategy
         		final int numVisits = Math.max(child.numVisits() + child.numVirtualVisits(), 1);
         		explore = Math.sqrt(parentLog / numVisits);
         	}
+        	
+        	final double pnsTerm = currentPNMCTSNode.childrenPNSSelectionTerms()[i];
 
-        	final double ucb1Value = exploit + explorationConstant * explore;
+        	final double ucb1Value = exploit + explorationConstant * explore + pnConstant * pnsTerm;
         	//System.out.println("ucb1Value = " + ucb1Value);
         	//System.out.println("exploit = " + exploit);
         	//System.out.println("explore = " + explore);
@@ -142,8 +145,7 @@ public final class PNS_UCB1 implements SelectionStrategy
         	}
         }
         
-        // TODO implement the PNS part
-        //return bestIdx;
+        return bestIdx;
 	}
 	
 	//-------------------------------------------------------------------------
@@ -154,106 +156,230 @@ public final class PNS_UCB1 implements SelectionStrategy
 	 */
 	public void updateChildrenSelectionScores(final PNMCTSNode current)
 	{
-		// TODO compute all the scores
+		//  This is the array that we'll re-compute
+		final double[] childrenPNSSelectionTerms = current.childrenPNSSelectionTerms();
+		final PNMCTSNodeTypes currentNodeType = current.nodeType();
+		final int numLegalMoves = current.numLegalMoves();
+		
 		switch(pnsVariant)
         {
             case RANK:
             	final List<ScoredInt> sortedChildIndices = new ArrayList<ScoredInt>();
+            	
+            	if (currentNodeType == PNMCTSNodeTypes.AND_NODE)
+            	{
+            		// AND node
+            		for (int i = 0; i < numLegalMoves; ++i)
+					{
+						final PNMCTSNode child = (PNMCTSNode) current.childForNthLegalMove(i);
+						if (child == null)
+						{
+							// This means: disproof number = 1.0 for unexpanded child. TODO this correct?
+							sortedChildIndices.add(new ScoredInt(i, 1.0));
+						}
+						else
+						{
+							sortedChildIndices.add(new ScoredInt(i, child.disproofNumber()));
+						}
+					}
+            	}
+            	else
+            	{
+            		// OR node
+            		for (int i = 0; i < numLegalMoves; ++i)
+					{
+						final PNMCTSNode child = (PNMCTSNode) current.childForNthLegalMove(i);
+						if (child == null)
+						{
+							// This means: proof number = 1.0 for unexpanded child. TODO this correct?
+							sortedChildIndices.add(new ScoredInt(i, 1.0));
+						}
+						else
+						{
+							sortedChildIndices.add(new ScoredInt(i, child.proofNumber()));
+						}
+					}
+            	}
 
+            	Collections.sort(sortedChildIndices, ScoredInt.ASCENDING);
+            	double lastNum = Double.NaN;
+            	int lastRank = -1;
             	
-            	List<Node> sorted = new ArrayList<Node>(this.children);
-                Collections.sort(sorted);
-                Node lastNode = null;
-                for (int i = 0; i < sorted.size(); i++) {
-                    Node child = sorted.get(i);
-                    // If there's a tie
-                    if (lastNode != null && this.type == PNSNodeTypes.OR_NODE && lastNode.getProofNum() == child.getProofNum()) {
-                        child.setRank(lastNode.getRank());
-                        // If there's a tie
-                    } else if (lastNode != null && this.type == PNSNodeTypes.AND_NODE && lastNode.getDisproofNum() == child.getDisproofNum()) {
-                        child.setRank(lastNode.getRank());
-                    } else {
-                        child.setRank(i + 1);
-                    }
-                    lastNode = child;
-                }
-            	
-                setChildRanks();
-                double total = this.children.size();
-                for(Node child : this.children)
-                    child.setPnsSelectionValue(1.0 - (child.getRank() / total));
+            	for (int i = 0; i < numLegalMoves; ++i)
+            	{
+            		final double num = sortedChildIndices.get(i).score();
+            		final int childIndex = sortedChildIndices.get(i).object();
+            		final int rank;
+            		if (lastNum == num)
+            		{
+            			// There's a tie
+            			rank = lastRank;
+            		}
+            		else
+            		{
+            			// No tie
+            			lastRank = i + 1;
+            			lastNum = num;
+            			rank = lastRank;
+            		}
+            		
+            		childrenPNSSelectionTerms[childIndex] = (1.0 - (((double) rank) / numLegalMoves));
+            	}
 
                 break;
 
             case SUM:
 
                 double sum = 0.0;
-
-                if (type == PNSNodeTypes.OR_NODE) {
-                    for (Node child : this.children)
-                        if (Double.isFinite(child.getProofNum()))
-                            sum += child.getProofNum();
-                    if (sum > 0)
-                        for (Node child : this.children)
-                            if (Double.isFinite(child.getProofNum()))
-                                child.setPnsSelectionValue(1 - (child.getProofNum() / sum));
-                            else
-                                child.setPnsSelectionValue(0);
-                } else {
-                    for (Node child : this.children)
-                        if (Double.isFinite(child.getDisproofNum()))
-                            sum += child.getDisproofNum();
-                    if (sum > 0)
-                        for (Node child : this.children)
-                            if (Double.isFinite(child.getDisproofNum()))
-                                child.setPnsSelectionValue(1 - (child.getDisproofNum() / sum));
-                            else
-                                child.setPnsSelectionValue(0);
+                
+                if (currentNodeType == PNMCTSNodeTypes.AND_NODE)
+            	{
+            		// AND node
+                	for (int i = 0; i < numLegalMoves; ++i)
+					{
+						final PNMCTSNode child = (PNMCTSNode) current.childForNthLegalMove(i);
+						if (child == null)
+						{
+							// This means: disproof number = 1.0 for unexpanded child. TODO this correct?
+							sum += 1.0;
+						}
+						else
+						{
+							if (Double.isFinite(child.disproofNumber()))
+								sum += child.disproofNumber();
+						}
+					}
+            	}
+                else
+                {
+                	// OR node
+                	for (int i = 0; i < numLegalMoves; ++i)
+					{
+						final PNMCTSNode child = (PNMCTSNode) current.childForNthLegalMove(i);
+						if (child == null)
+						{
+							// This means: proof number = 1.0 for unexpanded child. TODO this correct?
+							sum += 1.0;
+						}
+						else
+						{
+							if (Double.isFinite(child.proofNumber()))
+								sum += child.proofNumber();
+						}
+					}
                 }
+                
+                if (sum > 0.0)
+                {
+                	for (int i = 0; i < numLegalMoves; ++i)
+					{
+						final PNMCTSNode child = (PNMCTSNode) current.childForNthLegalMove(i);
+						final double number;
+						if (child == null)
+						{
+							// This means: (dis)proof number = 1.0 for unexpanded child. TODO this correct?
+							number = 1.0;
+						}
+						else
+						{
+							number = (currentNodeType == PNMCTSNodeTypes.AND_NODE) ? child.disproofNumber() : child.proofNumber();
+						}
+						
+						if (Double.isFinite(number))
+							childrenPNSSelectionTerms[i] = (1.0 - (number / sum));
+						else
+							childrenPNSSelectionTerms[i] = 0.0;
+					}
+                }
+                else
+                {
+                	// Weird special case, not sure what to do here. Probably it doesn't matter.
+                	Arrays.fill(childrenPNSSelectionTerms, 0.0);
+                }
+
                 break;
 
             case MAX:
-
-                double max = 0.0;
-                boolean wasInfinity = false;
-
-                if (type == PNSNodeTypes.OR_NODE) {
-                    for (Node child : this.children)
-                        if (Double.isFinite(child.getProofNum()))
-                            max = Math.max(child.getProofNum(), max);
-                        else
-                            wasInfinity = true;
-
-                    if (wasInfinity) max += 1;
-
-                    if (max > 0)
-                        for (Node child : this.children)
-                            if (Double.isFinite(child.getProofNum()))
-                                child.setPnsSelectionValue(1 - (child.getProofNum() / max));
-                            else
-                                child.setPnsSelectionValue(0);
-                } else {
-                    for (Node child : this.children)
-                        if (Double.isFinite(child.getDisproofNum()))
-                            max = Math.max(child.getDisproofNum(), max);
-                        else
-                            wasInfinity = true;
-
-                    if (wasInfinity) max += 1;
-
-                    if (max > 0)
-                        for (Node child : this.children)
-                            if (Double.isFinite(child.getDisproofNum()))
-                                child.setPnsSelectionValue(1 - (child.getDisproofNum() / max));
-                            else
-                                child.setPnsSelectionValue(0);
+            	
+            	double max = 0.0;
+            	boolean haveInf = false;
+                
+                if (currentNodeType == PNMCTSNodeTypes.AND_NODE)
+            	{
+            		// AND node
+                	for (int i = 0; i < numLegalMoves; ++i)
+					{
+						final PNMCTSNode child = (PNMCTSNode) current.childForNthLegalMove(i);
+						if (child == null)
+						{
+							// This means: disproof number = 1.0 for unexpanded child. TODO this correct?
+							max = Math.max(max, 1.0);
+						}
+						else
+						{
+							if (Double.isFinite(child.disproofNumber()))
+								max = Math.max(max, child.disproofNumber());
+							else
+								haveInf = true;
+						}
+					}
+            	}
+                else
+                {
+                	// OR node
+                	for (int i = 0; i < numLegalMoves; ++i)
+					{
+						final PNMCTSNode child = (PNMCTSNode) current.childForNthLegalMove(i);
+						if (child == null)
+						{
+							// This means: proof number = 1.0 for unexpanded child. TODO this correct?
+							max = Math.max(max, 1.0);
+						}
+						else
+						{
+							if (Double.isFinite(child.proofNumber()))
+								max = Math.max(max, child.proofNumber());
+							else
+								haveInf = true;
+						}
+					}
+                }
+                
+                if (haveInf)
+                	max += 1.0;
+                
+                if (max > 0.0)
+                {
+                	for (int i = 0; i < numLegalMoves; ++i)
+					{
+						final PNMCTSNode child = (PNMCTSNode) current.childForNthLegalMove(i);
+						final double number;
+						if (child == null)
+						{
+							// This means: (dis)proof number = 1.0 for unexpanded child. TODO this correct?
+							number = 1.0;
+						}
+						else
+						{
+							number = (currentNodeType == PNMCTSNodeTypes.AND_NODE) ? child.disproofNumber() : child.proofNumber();
+						}
+						
+						if (Double.isFinite(number))
+							childrenPNSSelectionTerms[i] = (1.0 - (number / max));
+						else
+							childrenPNSSelectionTerms[i] = 0.0;
+					}
+                }
+                else
+                {
+                	// Weird special case, not sure what to do here. Probably it doesn't matter.
+                	Arrays.fill(childrenPNSSelectionTerms, 0.0);
                 }
 
                 break;
 
             default:
                 throw new AssertionError("UNKNOWN PNS METHOD!");
-
         }
 		
 		current.setSelectionScoresDirtyFlag(false);

@@ -65,6 +65,9 @@ public final class PNMCTSNode extends DeterministicNode
 	/** Are the cached PNS-based terms of childrens' selection scores outdated? */
 	protected boolean childSelectionScoresDirty = false;
 	
+	/** Cached PNS-based terms for selection scores for all our children (including unexpanded ones) */
+	protected final double[] childrenPNSSelectionTerms;
+	
 	//-------------------------------------------------------------------------
     
     /**
@@ -108,6 +111,8 @@ public final class PNMCTSNode extends DeterministicNode
     	
     	evaluate();
         setProofAndDisproofNumbers();
+        
+        childrenPNSSelectionTerms = new double[numLegalMoves()];
     }
     
     //-------------------------------------------------------------------------
@@ -267,6 +272,14 @@ public final class PNMCTSNode extends DeterministicNode
     }
     
     /**
+     * @return What type of node are we? (OR / AND)
+     */
+    public PNMCTSNodeTypes nodeType()
+    {
+    	return type;
+    }
+    
+    /**
      * Store a flag saying whether the cached PNS-based terms of our childrens'
      * selection scores are (potentially) outdated.
      * 
@@ -291,6 +304,14 @@ public final class PNMCTSNode extends DeterministicNode
     public double disproofNumber()
     {
     	return disproofNumber;
+    }
+    
+    /**
+     * @return Array of PNS-based terms for selection strategy for all of our children.
+     */
+    public double[] childrenPNSSelectionTerms()
+    {
+    	return childrenPNSSelectionTerms;
     }
     
     //-------------------------------------------------------------------------
