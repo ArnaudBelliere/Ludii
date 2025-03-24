@@ -1,7 +1,11 @@
 package search.mcts.selection;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
+import main.collections.ScoredInt;
 import other.state.State;
 import search.mcts.MCTS;
 import search.mcts.backpropagation.BackpropagationStrategy;
@@ -86,7 +90,7 @@ public final class PNS_UCB1 implements SelectionStrategy
         final PNMCTSNode currentPNMCTSNode = (PNMCTSNode) current;
         if (currentPNMCTSNode.childSelectionScoresDirty())
         {
-        	updateChildSelectionScores(currentPNMCTSNode);
+        	updateChildrenSelectionScores(currentPNMCTSNode);
         }
         
         for (int i = 0; i < numChildren; ++i) 
@@ -148,12 +152,32 @@ public final class PNS_UCB1 implements SelectionStrategy
 	 * Updates the PN-based terms of the selection strategy for all children of current.
 	 * @param current
 	 */
-	public void updateChildSelectionScores(final PNMCTSNode current)
+	public void updateChildrenSelectionScores(final PNMCTSNode current)
 	{
 		// TODO compute all the scores
 		switch(pnsVariant)
         {
-            case PNUCT_VARIANT.RANK:
+            case RANK:
+            	final List<ScoredInt> sortedChildIndices = new ArrayList<ScoredInt>();
+
+            	
+            	List<Node> sorted = new ArrayList<Node>(this.children);
+                Collections.sort(sorted);
+                Node lastNode = null;
+                for (int i = 0; i < sorted.size(); i++) {
+                    Node child = sorted.get(i);
+                    // If there's a tie
+                    if (lastNode != null && this.type == PNSNodeTypes.OR_NODE && lastNode.getProofNum() == child.getProofNum()) {
+                        child.setRank(lastNode.getRank());
+                        // If there's a tie
+                    } else if (lastNode != null && this.type == PNSNodeTypes.AND_NODE && lastNode.getDisproofNum() == child.getDisproofNum()) {
+                        child.setRank(lastNode.getRank());
+                    } else {
+                        child.setRank(i + 1);
+                    }
+                    lastNode = child;
+                }
+            	
                 setChildRanks();
                 double total = this.children.size();
                 for(Node child : this.children)
@@ -161,7 +185,7 @@ public final class PNS_UCB1 implements SelectionStrategy
 
                 break;
 
-            case PNUCT_VARIANT.SUM:
+            case SUM:
 
                 double sum = 0.0;
 
@@ -188,7 +212,7 @@ public final class PNS_UCB1 implements SelectionStrategy
                 }
                 break;
 
-            case PNUCT_VARIANT.MAX:
+            case MAX:
 
                 double max = 0.0;
                 boolean wasInfinity = false;
