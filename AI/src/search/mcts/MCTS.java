@@ -48,6 +48,7 @@ import search.mcts.finalmoveselection.ProportionalExpVisitCount;
 import search.mcts.finalmoveselection.RobustChild;
 import search.mcts.nodes.BaseNode;
 import search.mcts.nodes.OpenLoopNode;
+import search.mcts.nodes.PNMCTSNode;
 import search.mcts.nodes.ScoreBoundsNode;
 import search.mcts.nodes.StandardNode;
 import search.mcts.playout.HeuristicSampingPlayout;
@@ -593,6 +594,8 @@ public class MCTS extends ExpertPolicy
 							
 							while (current.contextRef().trial().status() == null)
 							{
+								// TODO should break early for proven nodes and backpropagate proven value
+								
 								BaseNode prevNode = current;
 								prevNode.getLock().lock();
 
@@ -857,7 +860,9 @@ public class MCTS extends ExpertPolicy
 	{
 		if ((currentGameFlags & GameType.Stochastic) == 0L || wantsCheatRNG())
 		{
-			if (useScoreBounds)
+			if ((backpropFlags & BackpropagationStrategy.PROOF_DISPROOF_NUMBERS) != 0)
+				return new PNMCTSNode(mcts, parent, parentMove, parentMoveWithoutConseq, context);
+			else if (useScoreBounds)
 				return new ScoreBoundsNode(mcts, parent, parentMove, parentMoveWithoutConseq, context);
 			else
 				return new StandardNode(mcts, parent, parentMove, parentMoveWithoutConseq, context);
@@ -1208,6 +1213,9 @@ public class MCTS extends ExpertPolicy
 		
 		if (learnedSelectionPolicy != null && !learnedSelectionPolicy.supportsGame(game))
 			return false;
+		
+		if ((gameFlags & GameType.Stochastic) != 0L && (backpropFlags & BackpropagationStrategy.PROOF_DISPROOF_NUMBERS) != 0)
+			return false;	// cannot handle proof numbers in stochastic games
 		
 		return playoutStrategy.playoutSupportsGame(game);
 	}

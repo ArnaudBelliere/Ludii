@@ -48,6 +48,7 @@ import search.mcts.playout.NST;
 import search.mcts.playout.RandomPlayout;
 import search.mcts.selection.McBRAVE;
 import search.mcts.selection.McGRAVE;
+import search.mcts.selection.PNS_UCB1;
 import search.mcts.selection.ProgressiveBias;
 import search.mcts.selection.ProgressiveHistory;
 import search.mcts.selection.UCB1;
@@ -255,6 +256,22 @@ public class AIFactory
 					);
 			ucb1GRAVE.setFriendlyName("UCB1-GRAVE");
 			return ucb1GRAVE;
+		}
+		
+		if (string.equalsIgnoreCase("PN-MCTS"))
+		{
+			final MCTS pnmcts = 
+					new MCTS
+					(
+						new PNS_UCB1(), 
+						new RandomPlayout(200),
+						new MonteCarloBackprop(),
+						new RobustChild()
+					);
+			
+			pnmcts.setFriendlyName("PN-MCTS");
+			
+			return pnmcts;
 		}
 		
 		if (string.equalsIgnoreCase("Ludii AI"))
@@ -616,6 +633,10 @@ public class AIFactory
 			final MCTS ucb1GRAVE = new MCTS(new UCB1GRAVE(), new RandomPlayout(200), new MonteCarloBackprop(), new RobustChild());
 			ucb1GRAVE.setFriendlyName("UCB1-GRAVE");
 			return ucb1GRAVE;
+		}
+		else if (algName.equalsIgnoreCase("PN-MCTS"))
+		{
+			return createAI("PN-MCTS");
 		}
 		else if (algName.equalsIgnoreCase("Biased MCTS"))
 		{
