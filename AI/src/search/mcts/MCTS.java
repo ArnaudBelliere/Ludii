@@ -48,6 +48,7 @@ import search.mcts.finalmoveselection.ProportionalExpVisitCount;
 import search.mcts.finalmoveselection.RobustChild;
 import search.mcts.nodes.BaseNode;
 import search.mcts.nodes.OpenLoopNode;
+import search.mcts.nodes.PNMCTSNode;
 import search.mcts.nodes.ScoreBoundsNode;
 import search.mcts.nodes.StandardNode;
 import search.mcts.playout.HeuristicSampingPlayout;
@@ -857,11 +858,11 @@ public class MCTS extends ExpertPolicy
     	final Context context
     )
 	{
-		// TODO detect when PN-MCTS node is necessary and use that
-		
 		if ((currentGameFlags & GameType.Stochastic) == 0L || wantsCheatRNG())
 		{
-			if (useScoreBounds)
+			if ((backpropFlags & BackpropagationStrategy.PROOF_DISPROOF_NUMBERS) != 0)
+				return new PNMCTSNode(mcts, parent, parentMove, parentMoveWithoutConseq, context);
+			else if (useScoreBounds)
 				return new ScoreBoundsNode(mcts, parent, parentMove, parentMoveWithoutConseq, context);
 			else
 				return new StandardNode(mcts, parent, parentMove, parentMoveWithoutConseq, context);

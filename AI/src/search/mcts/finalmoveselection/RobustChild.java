@@ -64,6 +64,7 @@ public final class RobustChild implements FinalMoveSelectionStrategy
             		bestActions.clear();
             		bestActionValueEstimate = childValueEstimate;
             		bestActions.add(rootNode.nthLegalMove(i));
+            		System.out.println("node with proven value of " + childValueEstimate);
             	}
             	else
             	{
