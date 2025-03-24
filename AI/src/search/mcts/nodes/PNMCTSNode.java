@@ -322,6 +322,18 @@ public final class PNMCTSNode extends DeterministicNode
     	return (proofValue != PNMCTSNodeValues.UNKNOWN);
     }
     
+    @Override
+    public double expectedScore(final int agent)
+    {
+    	if (rootPlayer == agent)
+    	{
+    		if (proofValue == PNMCTSNodeValues.TRUE)
+    			return 1.0;
+    	}
+    	
+    	return super.expectedScore(agent);
+    }
+    
 	//-------------------------------------------------------------------------
 
 }
