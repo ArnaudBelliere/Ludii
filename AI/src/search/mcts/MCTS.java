@@ -41,6 +41,7 @@ import search.mcts.backpropagation.AlphaGoBackprop;
 import search.mcts.backpropagation.BackpropagationStrategy;
 import search.mcts.backpropagation.HeuristicBackprop;
 import search.mcts.backpropagation.MonteCarloBackprop;
+import search.mcts.backpropagation.PNSMCTSBackprop;
 import search.mcts.backpropagation.QualitativeBonus;
 import search.mcts.finalmoveselection.FinalMoveSelectionStrategy;
 import search.mcts.finalmoveselection.MaxAvgScore;
@@ -62,6 +63,7 @@ import search.mcts.selection.SelectionStrategy;
 import search.mcts.selection.UCB1;
 import search.mcts.selection.UCB1GRAVE;
 import search.mcts.selection.UCB1Tuned;
+import search.mcts.selection.PNS_UCB1;
 import training.expert_iteration.ExItExperience;
 import training.expert_iteration.ExpertPolicy;
 import utils.AIUtils;
@@ -414,6 +416,23 @@ public class MCTS extends ExpertPolicy
 		mcts.setWantsMetadataHeuristics(false);
 		mcts.setHeuristics(heuristics);
 		mcts.friendlyName = "PVTS";
+		
+		return mcts;
+	}
+	
+	
+	public static MCTS createPNSMCTS(final double pnsConstant)
+	{		
+		final MCTS mcts = 
+				new MCTS
+				(
+					new PNS_UCB1(Math.sqrt(2), pnsConstant),
+					new RandomPlayout(200),
+					new PNSMCTSBackprop(),
+					new RobustChild()
+				);
+		
+		mcts.friendlyName = "PNSMCTS";
 		
 		return mcts;
 	}

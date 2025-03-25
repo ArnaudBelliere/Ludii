@@ -7,6 +7,7 @@ import other.context.Context;
 import other.model.Model;
 import other.trial.Trial;
 import search.mcts.MCTS;
+import search.mcts.selection.PNS_UCB1;
 import search.mcts.selection.PNS_UCB1.PNUCT_VARIANT;
 
 
@@ -41,14 +42,14 @@ public class Run {
     }
 
     public static void main(String[] args) {
-        args = new String[]{"500", "Knightthrough", "6", "max", "0.0"};
+        args = new String[]{"500", "Knightthrough", "200", "max", "5.0"};
 
-        boolean RUN_CI_CALC=true;
+        boolean RUN_CI_CALC=false;
         boolean VERBOSE=true;
 
         if(args.length < 5) {System.err.println(USAGE_ERR); System.exit(1);}
 
-        String GAME_NAME = "Player/games/"+args[1]+".lud";
+        String GAME_NAME = "games/"+args[1]+".lud";
         File GAME_FILE = new File(GAME_NAME);
 
         if (!GAME_FILE.canRead()) {System.err.println("Cannot read game file: " + GAME_FILE.getAbsolutePath()); System.exit(1);}
@@ -86,16 +87,15 @@ public class Run {
 
         long startTime = System.currentTimeMillis();
         for (int gameCounter = 1; gameCounter <= NUM_GAMES; ++gameCounter) {
-            //AI testedAI = new PNSMCTS_Extension_SUM_MAX(finMove, minVisits, pnsConstant, pnsMethod);
-            //AI testedAI = new PNSMCTS_2P(finMove, minVisits, pnsConstant, pnsMethod);
+//            AI testedAI = new PNSMCTS_2P(finMove, minVisits, pnsConstant, pnsMethod);
             //AI testedAI = new  MCTS.(finMove, minVisits, pnsConstant, pnsMethod);
-            AI testedAI = MCTS.createUCT(); // TODO
+//            AI testedAI = MCTS.createUCT(); // TODO
 
             List<AI> ais = new ArrayList<>();
             if (gameCounter % 2 == 0) {
-                ais.add(null); ais.add(MCTS.createUCT()); ais.add(testedAI);
+                ais.add(null); ais.add(MCTS.createUCT()); ais.add(MCTS.createPNSMCTS(pnsConstant));
             } else {
-                ais.add(null); ais.add(testedAI); ais.add(MCTS.createUCT());
+                ais.add(null); ais.add(MCTS.createPNSMCTS(pnsConstant)); ais.add(MCTS.createUCT());
             }
             if (gameCounter == 1) { results.put("MCTS", 0); results.put(ALGO_NAME, 0);}
 

@@ -48,7 +48,7 @@ public final class PNS_UCB1 implements SelectionStrategy
 	protected int minVisitsSolvedChild = 5;
 	
 	/** Which variant of the PNS-based term do we want to use? */
-	protected PNUCT_VARIANT pnsVariant = PNUCT_VARIANT.MAX;
+	protected PNUCT_VARIANT pnsVariant = PNUCT_VARIANT.RANK;
 	
 	//-------------------------------------------------------------------------
 	
