@@ -421,12 +421,12 @@ public class MCTS extends ExpertPolicy
 	}
 	
 	
-	public static MCTS createPNSMCTS(final double pnsConstant)
+	public static MCTS createPNSMCTS(final double pnsConstant, final PNS_UCB1.PNUCT_VARIANT pnsVariant)
 	{		
 		final MCTS mcts = 
 				new MCTS
 				(
-					new PNS_UCB1(Math.sqrt(2), pnsConstant),
+					new PNS_UCB1(Math.sqrt(2), pnsConstant, pnsVariant),
 					new RandomPlayout(200),
 					new PNSMCTSBackprop(),
 					new RobustChild()

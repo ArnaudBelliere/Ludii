@@ -49,7 +49,7 @@ public final class RobustChild implements FinalMoveSelectionStrategy
             final int numVisits = child == null ? 0 : child.numVisits();
             final double childValueEstimate = child == null ? 0.0 : child.expectedScore(moverAgent);
             final float childPriorPolicy = priorPolicy == null ? -1.f : priorPolicy.get(i);
-            final boolean childProven = child.isValueProven(moverAgent);
+            final boolean childProven = child == null ? false : child.isValueProven(moverAgent);
 
             if (childProven && childValueEstimate >= bestActionValueEstimate)
             {

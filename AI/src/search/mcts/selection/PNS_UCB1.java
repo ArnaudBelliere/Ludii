@@ -45,7 +45,7 @@ public final class PNS_UCB1 implements SelectionStrategy
 	protected double pnConstant;
 	
 	/** Minimum visits we must still allow sending into a child, even if it's a proven loss. */
-	protected int minVisitsSolvedChild = 5;
+	protected int minVisitsSolvedChild = Integer.MAX_VALUE;
 	
 	/** Which variant of the PNS-based term do we want to use? */
 	protected PNUCT_VARIANT pnsVariant = PNUCT_VARIANT.RANK;
@@ -57,20 +57,22 @@ public final class PNS_UCB1 implements SelectionStrategy
 	 */
 	public PNS_UCB1()
 	{
-		this(Math.sqrt(2.0), 1.0);
+		this(Math.sqrt(2.0), 1.0, PNUCT_VARIANT.RANK);
 	}
 	
 	/**
 	 * TODO add other params
 	 * 
-	 * Constructor with parameters for constants
+	 * Constructor with parameters for constants and PN UCT variant
 	 * @param explorationConstant
 	 * @param pnConstant
+	 * @param variant
 	 */
-	public PNS_UCB1(final double explorationConstant, final double pnConstant)
+	public PNS_UCB1(final double explorationConstant, final double pnConstant, final PNUCT_VARIANT variant)
 	{
 		this.explorationConstant = explorationConstant;
 		this.pnConstant = pnConstant;
+		this.pnsVariant = variant;
 	}
 	
 	//-------------------------------------------------------------------------

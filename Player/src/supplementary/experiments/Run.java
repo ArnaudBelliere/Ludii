@@ -42,7 +42,7 @@ public class Run {
     }
 
     public static void main(String[] args) {
-        args = new String[]{"500", "Knightthrough", "200", "max", "5.0"};
+//        args = new String[]{"500", "Knightthrough", "200", "rank", "5.0"};
 
         boolean RUN_CI_CALC=false;
         boolean VERBOSE=true;
@@ -93,9 +93,9 @@ public class Run {
 
             List<AI> ais = new ArrayList<>();
             if (gameCounter % 2 == 0) {
-                ais.add(null); ais.add(MCTS.createUCT()); ais.add(MCTS.createPNSMCTS(pnsConstant));
+                ais.add(null); ais.add(MCTS.createUCT()); ais.add(MCTS.createPNSMCTS(pnsConstant, pnsMethod));
             } else {
-                ais.add(null); ais.add(MCTS.createPNSMCTS(pnsConstant)); ais.add(MCTS.createUCT());
+                ais.add(null); ais.add(MCTS.createPNSMCTS(pnsConstant, pnsMethod)); ais.add(MCTS.createUCT());
             }
             if (gameCounter == 1) { results.put("MCTS", 0); results.put(ALGO_NAME, 0);}
 
