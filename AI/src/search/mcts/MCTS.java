@@ -40,6 +40,7 @@ import policies.softmax.SoftmaxPolicyLogitTree;
 import search.mcts.backpropagation.AlphaGoBackprop;
 import search.mcts.backpropagation.BackpropagationStrategy;
 import search.mcts.backpropagation.HeuristicBackprop;
+import search.mcts.backpropagation.MP_PNSMCTSBackprop;
 import search.mcts.backpropagation.MonteCarloBackprop;
 import search.mcts.backpropagation.PNSMCTSBackprop;
 import search.mcts.backpropagation.QualitativeBonus;
@@ -50,6 +51,7 @@ import search.mcts.finalmoveselection.RobustChild;
 import search.mcts.nodes.BaseNode;
 import search.mcts.nodes.OpenLoopNode;
 import search.mcts.nodes.PNMCTSNode;
+import search.mcts.nodes.MP_PNMCTSNode;
 import search.mcts.nodes.ScoreBoundsNode;
 import search.mcts.nodes.StandardNode;
 import search.mcts.playout.HeuristicSampingPlayout;
@@ -64,6 +66,7 @@ import search.mcts.selection.UCB1;
 import search.mcts.selection.UCB1GRAVE;
 import search.mcts.selection.UCB1Tuned;
 import search.mcts.selection.PNS_UCB1;
+import search.mcts.selection.MP_PNS_UCB;
 import training.expert_iteration.ExItExperience;
 import training.expert_iteration.ExpertPolicy;
 import utils.AIUtils;
@@ -433,6 +436,22 @@ public class MCTS extends ExpertPolicy
 				);
 		
 		mcts.friendlyName = "PNSMCTS";
+		
+		return mcts;
+	}
+	
+	public static MCTS createMPPNSMCTS(final double pnsConstant, final MP_PNS_UCB.PNUCT_VARIANT pnsVariant)
+	{		
+		final MCTS mcts = 
+				new MCTS
+				(
+					new MP_PNS_UCB(Math.sqrt(2), pnsConstant, pnsVariant),
+					new RandomPlayout(200),
+					new MP_PNSMCTSBackprop(),
+					new RobustChild()
+				);
+		
+		mcts.friendlyName = "MP_PNSMCTS";
 		
 		return mcts;
 	}
@@ -880,7 +899,10 @@ public class MCTS extends ExpertPolicy
 		if ((currentGameFlags & GameType.Stochastic) == 0L || wantsCheatRNG())
 		{
 			if ((backpropFlags & BackpropagationStrategy.PROOF_DISPROOF_NUMBERS) != 0)
-				return new PNMCTSNode(mcts, parent, parentMove, parentMoveWithoutConseq, context);
+				if((backpropFlags & BackpropagationStrategy.MULTIPLAYER_PNSMCTS) != 0)
+					return new MP_PNMCTSNode(mcts, parent, parentMove, parentMoveWithoutConseq, context);
+				else
+					return new PNMCTSNode(mcts, parent, parentMove, parentMoveWithoutConseq, context);
 			else if (useScoreBounds)
 				return new ScoreBoundsNode(mcts, parent, parentMove, parentMoveWithoutConseq, context);
 			else
