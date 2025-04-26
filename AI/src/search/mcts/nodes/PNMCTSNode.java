@@ -287,7 +287,7 @@ public final class PNMCTSNode extends DeterministicNode
      */
     public void setSelectionScoresDirtyFlag(final boolean newFlag)
     {
-    	childSelectionScoresDirty = newFlag;	// TODO selection strategy will have to account for this
+    	childSelectionScoresDirty = newFlag;
     }
     
     /**

@@ -4,55 +4,21 @@ import other.RankUtils;
 import other.context.Context;
 import other.move.Move;
 import search.mcts.MCTS;
+import search.mcts.nodes.MP_PNMCTSNode.MP_PNMCTSNodeTypes;
+import search.mcts.nodes.MP_PNMCTSNode.MP_PNMCTSNodeValues;
 
 /**
- * Node for Multiplayer PN-MCTS tree.
+ * Node for combined Score Bounds + Multiplayer PN-MCTS tree.
  * 
- * @author Szymon Kosakowski
+ * @author Szymon Kosakowski & Dennis Soemers
  */
-public final class MP_PNMCTSNode extends DeterministicNode
+public final class ScoreBoundsPNMCTSNode extends DeterministicNode
 {
-	
-	//-------------------------------------------------------------------------
-	
-	/**
-	 * Nodes types in search trees in PN-MCTS
-	 * 
-	 * @author Dennis Soemers
-	 */
-	public enum MP_PNMCTSNodeTypes 
-	{
-        /** An OR node */
-        OR_NODE,
-
-        /** An AND node */
-        AND_NODE
-    }
-	
-	/**
-	 * Values of nodes in search trees in PN-MCTS
-	 * 
-	 * @author Dennis Soemers
-	 */
-	public enum MP_PNMCTSNodeValues
-	{
-		/** A proven node */
-		TRUE,
-		
-		/** A disproven node */
-		FALSE,
-		
-		/** Unknown node (yet to prove or disprove) */
-		UNKNOWN
-	}
 	
 	//-------------------------------------------------------------------------
 	
 	/** Proof number for this node */
 	protected double[] proofNumbers;
-	
-	/** The player to move in the root node of the tree this node is in. */
-	protected int rootPlayer;
 	
 	/** The player to move in this node. */
 	protected int currentPlayer;
@@ -60,17 +26,24 @@ public final class MP_PNMCTSNode extends DeterministicNode
 	/** Number of players in the game. */
 	protected int numPlayers;
 	
-	/** what type of node are we? */
-	protected MP_PNMCTSNodeTypes type;		// TODO can remove type altogether? and, hence, also the enum?
-	
-	/** The value (in terms of proven/disproven/dont know) for this node */
-	protected MP_PNMCTSNodeValues[] proofValue;
-	
 	/** Are the cached PNS-based terms of childrens' selection scores outdated? */
 	protected boolean childSelectionScoresDirty = false;
 	
 	/** Cached PNS-based terms for selection scores for all our children (including unexpanded ones) */
 	protected final double[] childrenPNSSelectionTerms;
+	
+	/** For every agent, a pessimistic score bound */
+	private final double[] pessimisticScores;
+	
+	/** For every agent, an optimistic score bound */
+	private final double[] optimisticScores;
+	
+	/** 
+	 * We'll "soft" prune a node N (make it return very negative exploitation scores)
+	 * whenever, for the agent to make a move in its parent node, the pessimistic
+	 * score of the parent is greater than or equal to the optimistic score of N.
+	 */
+	private boolean pruned = false;
 	
 	//-------------------------------------------------------------------------
     
@@ -83,7 +56,7 @@ public final class MP_PNMCTSNode extends DeterministicNode
      * @param parentMoveWithoutConseq
      * @param context
      */
-    public MP_PNMCTSNode
+    public ScoreBoundsPNMCTSNode
     (
     	final MCTS mcts, 
     	final BaseNode parent, 
@@ -94,43 +67,56 @@ public final class MP_PNMCTSNode extends DeterministicNode
     {
     	super(mcts, parent, parentMove, parentMoveWithoutConseq, context);
     	
-    	if (parent == null)
-    	{
-    		// We are the root node
-    		rootPlayer = context.state().mover();
-    	}
-    	else
-    	{
-    		rootPlayer = ((MP_PNMCTSNode) parent).rootPlayer;
-    	}
-    	
     	currentPlayer = context.state().mover();
     	
     	// Player 0 is not considered, players start from index 1
-    	numPlayers = context.trial().ranking().length - 1;
+    	numPlayers = context.game().players().count();
     	
     	proofNumbers = new double[numPlayers + 1];
-    	proofValue = new MP_PNMCTSNodeValues[numPlayers + 1];
    
     	for (int p = 1; p <= numPlayers; p++) 
     	{
     		proofNumbers[p] = 1.0;
-    		proofValue[p] = MP_PNMCTSNodeValues.UNKNOWN;
     	}
-    	
-    	if (context.state().mover() == rootPlayer) 
-    	{
-            this.type = MP_PNMCTSNodeTypes.OR_NODE;
-        }
-    	else 
-    	{
-            this.type = MP_PNMCTSNodeTypes.AND_NODE;
-        }
     	
     	evaluate();
         setProofAndDisproofNumbers();
         
         childrenPNSSelectionTerms = new double[numLegalMoves()];
+        
+        pessimisticScores = new double[numPlayers + 1];
+    	optimisticScores = new double[numPlayers + 1];
+    	
+    	final double nextWorstScore = RankUtils.rankToUtil(context.computeNextLossRank(), numPlayers);
+    	final double nextBestScore = RankUtils.rankToUtil(context.computeNextWinRank(), numPlayers);
+    	final double[] currentUtils = RankUtils.agentUtilities(context);
+    	
+    	for (int p = 1; p <= numPlayers; ++p)
+    	{
+    		if (!context.active(p))		// Have a proven outcome
+    		{
+    			pessimisticScores[p] = currentUtils[p];
+    			optimisticScores[p] = currentUtils[p];
+    		}
+    		else
+    		{
+    			pessimisticScores[p] = nextWorstScore;
+    			optimisticScores[p] = nextBestScore;
+    		}
+    	}
+    	
+    	// Update bounds in parents (need to do this in a separate loop for correct pruning)
+    	if (parent != null)
+    	{
+    		for (int p = 1; p <= numPlayers; ++p)
+	    	{
+	    		if (currentUtils[p] != 0.0)
+	    		{
+	    			((ScoreBoundsPNMCTSNode) parent).updatePessBounds(p, pessimisticScores[p], this);
+		    		((ScoreBoundsPNMCTSNode) parent).updateOptBounds(p, optimisticScores[p], this);
+	    		}
+	    	}
+    	}
     }
     
     //-------------------------------------------------------------------------
@@ -196,7 +182,7 @@ public final class MP_PNMCTSNode extends DeterministicNode
 					proof = 0.0;
 					for (final BaseNode child : children)
 					{
-						final MP_PNMCTSNode childNode = (MP_PNMCTSNode) child;
+						final ScoreBoundsPNMCTSNode childNode = (ScoreBoundsPNMCTSNode) child;
 						if (childNode != null)
 						{
 							proof += childNode.proofNumber(playerNum);
@@ -222,7 +208,7 @@ public final class MP_PNMCTSNode extends DeterministicNode
 					
 					for (final BaseNode child : children)
 					{
-						final MP_PNMCTSNode childNode = (MP_PNMCTSNode) child;
+						final ScoreBoundsPNMCTSNode childNode = (ScoreBoundsPNMCTSNode) child;
 						if (childNode != null)
 						{
 							
@@ -309,14 +295,6 @@ public final class MP_PNMCTSNode extends DeterministicNode
     }
     
     /**
-     * @return What type of node are we? (OR / AND)
-     */
-    public MP_PNMCTSNodeTypes nodeType()
-    {
-    	return type;
-    }
-    
-    /**
      * Store a flag saying whether the cached PNS-based terms of our childrens'
      * selection scores are (potentially) outdated.
      * 
@@ -348,19 +326,125 @@ public final class MP_PNMCTSNode extends DeterministicNode
     @Override
     public boolean isValueProven(final int agent)
     {
-    	return (proofValue[agent] != MP_PNMCTSNodeValues.UNKNOWN);
+    	return (pessimisticScores[agent] == optimisticScores[agent]);
     }
     
     @Override
     public double expectedScore(final int agent)
     {
-    	if (proofValue[agent] == MP_PNMCTSNodeValues.TRUE)
-			return 1.0;		// TODO instead of 1.0, return best-possible-in-root?
+    	if (pessimisticScores[agent] == optimisticScores[agent])
+    		return pessimisticScores[agent];	// Solved this score
     	
     	return super.expectedScore(agent);
     }
     
+    @Override
+    public double exploitationScore(final int agent)
+    {
+    	if (pruned && parent != null)
+    	{
+    		final ScoreBoundsPNMCTSNode sbParent = (ScoreBoundsPNMCTSNode) parent;
+    		if (sbParent.optBound(agent) > pessBound(agent))
+    			return -10_000.0;
+    	}
+    	
+    	return super.exploitationScore(agent);
+    }
+    
     public int getCurrentPlayer() { return currentPlayer; }
+    
+    //-------------------------------------------------------------------------
+    
+    /**
+     * One of our children has an updated pessimistic bound for the given agent; 
+     * check if we should also update now
+     * 
+     * @param agent
+     * @param pessBound
+     * @param fromChild Child from which we receive update
+     */
+    public void updatePessBounds(final int agent, final double pessBound, final ScoreBoundsPNMCTSNode fromChild)
+    {
+    	final double oldPess = pessimisticScores[agent];
+    	
+    	if (pessBound > oldPess)	// May be able to increase pessimistic bounds
+    	{
+    		final int moverAgent = contextRef().state().playerToAgent(contextRef().state().mover());
+    		
+    		if (moverAgent == agent)
+    		{
+    			// The agent for which one of our children has a new pessimistic bound
+    			// is the agent to move in this node. Hence, we can update directly
+    			pessimisticScores[agent] = pessBound;
+    			
+    			// Mark any children with an optimistic bound less than or equal to our
+    			// new pessimistic bound as pruned
+    			for (int i = 0; i < children.length; ++i)
+    			{
+    				final ScoreBoundsPNMCTSNode child = (ScoreBoundsPNMCTSNode) children[i];
+    				
+    				if (child != null)
+    				{
+    					if (child.optBound(agent) <= pessBound)
+    						child.markPruned();
+    				}
+    			}
+    			
+    			if (parent != null)
+    				((ScoreBoundsPNMCTSNode) parent).updatePessBounds(agent, pessBound, this);
+    		}
+    		else
+    		{
+    			// The agent for which one of our children has a new pessimistic bound
+    			// is NOT the agent to move in this node. Hence, we only update to
+    			// the minimum pessimistic bound over all children.
+    			//
+    			// Technically, if the real value (opt = pess) were proven for the
+    			// agent to move, we could restrict the set of children over
+    			// which we take the minimum to just those that have the optimal
+    			// value for the agent to move.
+    			//
+    			// This is more expensive to implement though, and only relevant in
+    			// games with more than 2 players, and there likely also only occurs very
+    			// rarely, so we don't bother doing this.
+    			double minPess = pessBound;
+    			
+    			for (int i = 0; i < children.length; ++i)
+    			{
+    				final ScoreBoundsPNMCTSNode child = (ScoreBoundsPNMCTSNode) children[i];
+    				
+    				if (child == null)
+    				{
+    					return;		// Can't update anything if we have an unvisited child left
+    				}
+    				else
+    				{
+    					final double pess = child.pessBound(agent);
+    					if (pess < minPess)
+    					{
+    						if (pess == oldPess)
+    							return;		// Won't be able to update
+    						
+    						minPess = pess;
+    					}
+    				}
+    			}
+    			
+    			if (minPess < oldPess)
+    			{
+    				System.err.println("ERROR in updatePessBounds()!");
+    				System.err.println("oldPess = " + oldPess);
+    				System.err.println("minPess = " + minPess);
+    				System.err.println("pessBound = " + pessBound);
+    			}
+    			
+    			// We can update
+    			pessimisticScores[agent] = minPess;
+    			if (parent != null)
+    				((ScoreBoundsPNMCTSNode) parent).updatePessBounds(agent, minPess, this);
+    		}
+    	}
+    }
 
 	//-------------------------------------------------------------------------
 
