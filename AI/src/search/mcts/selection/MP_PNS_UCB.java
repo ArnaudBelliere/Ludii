@@ -12,7 +12,6 @@ import search.mcts.MCTS;
 import search.mcts.backpropagation.BackpropagationStrategy;
 import search.mcts.nodes.BaseNode;
 import search.mcts.nodes.MP_PNMCTSNode;
-import search.mcts.nodes.MP_PNMCTSNode.MP_PNMCTSNodeTypes;
 
 /**
  * A UCB1-based selection strategy that also includes a 
@@ -102,11 +101,13 @@ public final class MP_PNS_UCB implements SelectionStrategy
         	
         	// TODO the isValueProven() check shouldn't be necessary if we 
         	// backpropagate early for solved nodes
-        	if (child != null && !current.isValueProven(moverAgent)) 
-        	{
-                if (child.proofNumber(currentMP_PNMCTSNode.getCurrentPlayer()) == 0 && child.numVisits() > minVisitsSolvedChild) 
-                	continue;
-            }
+        	
+        	// old PN-MCTS would prune proven-loss children here, but that doesn't make sense, we can't prove losses anymore
+//        	if (child != null && !current.isValueProven(moverAgent)) 
+//        	{
+//                if (child.proofNumber(moverAgent) == 0 && child.numVisits() > minVisitsSolvedChild) 
+//                	continue;
+//            }
         	
         	final double exploit;
         	final double explore;
@@ -207,6 +208,8 @@ public final class MP_PNS_UCB implements SelectionStrategy
             		
             		childrenPNSSelectionTerms[childIndex] = (1.0 - (((double) rank) / numLegalMoves));
             	}
+            	
+            	//System.out.println(Arrays.toString(childrenPNSSelectionTerms));
 
                 break;
 

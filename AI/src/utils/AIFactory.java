@@ -261,12 +261,12 @@ public class AIFactory
 		
 		if (string.equalsIgnoreCase("PN-MCTS"))
 		{
-			return MCTS.createPNSMCTS(Math.sqrt(2.0), PNS_UCB1.PNUCT_VARIANT.RANK);
+			return MCTS.createPNSMCTS(1.0, PNS_UCB1.PNUCT_VARIANT.RANK);
 		}
 		
 		if (string.equalsIgnoreCase("MP-PN-MCTS"))
 		{
-			return MCTS.createMPPNSMCTS(Math.sqrt(2.0), MP_PNS_UCB.PNUCT_VARIANT.RANK);
+			return MCTS.createMPPNSMCTS(1.0, MP_PNS_UCB.PNUCT_VARIANT.RANK);
 		}
 		
 		if (string.equalsIgnoreCase("Ludii AI"))

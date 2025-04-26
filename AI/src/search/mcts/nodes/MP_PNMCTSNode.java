@@ -112,12 +112,11 @@ public final class MP_PNMCTSNode extends DeterministicNode
     	proofNumbers = new double[numPlayers + 1];
     	proofValue = new MP_PNMCTSNodeValues[numPlayers + 1];
    
-    	for(int p = 1; p <= numPlayers; p++) {
+    	for (int p = 1; p <= numPlayers; p++) 
+    	{
     		proofNumbers[p] = 1.0;
     		proofValue[p] = MP_PNMCTSNodeValues.UNKNOWN;
     	}
-    	
-    	
     	
     	if (context.state().mover() == rootPlayer) 
     	{
@@ -144,18 +143,22 @@ public final class MP_PNMCTSNode extends DeterministicNode
     {
         if (this.context.trial().over()) 
         {
-            if (RankUtils.utilities(this.context)[rootPlayer] == 1.0) 
-            {
-                this.proofValue[currentPlayer] = MP_PNMCTSNodeValues.TRUE;
-                for(int p = 1; p <= numPlayers; p++) {
-            		if(p != currentPlayer)
-            			proofValue[p] = MP_PNMCTSNodeValues.FALSE;
-            	}
-            } 
-            else 
-            {
-                this.proofValue[currentPlayer] = MP_PNMCTSNodeValues.FALSE;
-            }
+        	final double[] utilities = RankUtils.utilities(this.context);
+        	
+        	for (int p = 1; p < this.proofValue.length; ++p)
+        	{
+        		// TODO instead of checking for 1.0, we should check for best-possible-in-root?
+        		if (utilities[p] == 1.0)
+        		{
+        			this.proofValue[p] = MP_PNMCTSNodeValues.TRUE;
+        			proofNumbers[p] = 0.0;
+        		}
+        		else
+        		{
+        			this.proofValue[p] = MP_PNMCTSNodeValues.FALSE;
+        			proofNumbers[p] = Double.POSITIVE_INFINITY;
+        		}
+        	}
         } 
         else 
         {
@@ -232,7 +235,7 @@ public final class MP_PNMCTSNode extends DeterministicNode
 						{
 							// An unexpanded child
 							// TODO verify that this is indeed what we want to do?
-							proof = 1.0;
+							proof = Math.min(1.0, proof);
 						}
 					}
 
@@ -240,14 +243,22 @@ public final class MP_PNMCTSNode extends DeterministicNode
 	                {
 						this.proofNumbers[playerNum] = proof;
 						
-						if (proof == 0.0) {
+						if (proof == 0.0) 
+						{
 							proofValue[playerNum] = MP_PNMCTSNodeValues.TRUE;
-							for(int p = 1; p <= numPlayers; p++)
-								if(p != playerNum)
+							for (int p = 1; p <= numPlayers; p++)
+							{
+								if (p != playerNum)
+								{
 									proofValue[p] = MP_PNMCTSNodeValues.FALSE;
+									proofNumbers[p] = Double.POSITIVE_INFINITY;
+								}
+							}
 						}
 						else if (proof == Double.POSITIVE_INFINITY)
+						{
 							proofValue[playerNum] = MP_PNMCTSNodeValues.FALSE;
+						}
 						
 						changed = true;
 	                }
@@ -276,7 +287,7 @@ public final class MP_PNMCTSNode extends DeterministicNode
 					this.proofNumbers[playerNum] = 0.0;
 					break;
 				case UNKNOWN:
-					// In multiplayer game it is possible to be terminal (lost) for one player, but still unknown for others
+					System.err.println("Terminal node has UNKNOWN proof value in MP_PNMCTSNode!");
 					break;
 				default:
 					System.err.println("Unknown proof value in MP_PNMCTSNode.setProofAndDisproofNumbers()");
@@ -343,11 +354,8 @@ public final class MP_PNMCTSNode extends DeterministicNode
     @Override
     public double expectedScore(final int agent)
     {
-    	if (rootPlayer == agent)
-    	{
-    		if (proofValue[agent] == MP_PNMCTSNodeValues.TRUE)
-    			return 1.0;
-    	}
+    	if (proofValue[agent] == MP_PNMCTSNodeValues.TRUE)
+			return 1.0;		// TODO instead of 1.0, return best-possible-in-root?
     	
     	return super.expectedScore(agent);
     }

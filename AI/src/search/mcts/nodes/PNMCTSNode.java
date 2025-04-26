@@ -178,7 +178,7 @@ public final class PNMCTSNode extends DeterministicNode
 						// TODO verify that this is indeed what we want to do?
 						// NOTE: addition for proof, setting for disproof
 						proof += 1.0;
-						disproof = 1.0;
+						disproof = Math.min(1.0, disproof);
 					}
 				}
 
@@ -213,7 +213,7 @@ public final class PNMCTSNode extends DeterministicNode
 						// TODO verify that this is indeed what we want to do?
 						// NOTE: addition for disproof, setting for proof
 						disproof += 1.0;
-						proof = 1.0;
+						proof = Math.min(1.0, proof);
 					}
 				}
 
