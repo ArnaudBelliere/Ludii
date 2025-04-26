@@ -11,16 +11,16 @@ import other.state.State;
 import search.mcts.MCTS;
 import search.mcts.backpropagation.BackpropagationStrategy;
 import search.mcts.nodes.BaseNode;
-import search.mcts.nodes.PNMCTSNode;
-import search.mcts.nodes.PNMCTSNode.PNMCTSNodeTypes;
+import search.mcts.nodes.MP_PNMCTSNode;
+import search.mcts.nodes.MP_PNMCTSNode.MP_PNMCTSNodeTypes;
 
 /**
  * A UCB1-based selection strategy that also includes a 
- * proof-number-search-based term.
+ * proof-number-search-based term, used for multiplayer games.
  * 
- * @author Dennis Soemers
+ * @author Szymon Kosakowski
  */
-public final class PNS_UCB1 implements SelectionStrategy
+public final class MP_PNS_UCB implements SelectionStrategy
 {
 	
 	//-------------------------------------------------------------------------
@@ -55,7 +55,7 @@ public final class PNS_UCB1 implements SelectionStrategy
 	/**
 	 * Constructor with default value sqrt(2.0) for exploration constant
 	 */
-	public PNS_UCB1()
+	public MP_PNS_UCB()
 	{
 		this(Math.sqrt(2.0), 1.0, PNUCT_VARIANT.RANK);
 	}
@@ -68,7 +68,7 @@ public final class PNS_UCB1 implements SelectionStrategy
 	 * @param pnConstant
 	 * @param variant
 	 */
-	public PNS_UCB1(final double explorationConstant, final double pnConstant, final PNUCT_VARIANT variant)
+	public MP_PNS_UCB(final double explorationConstant, final double pnConstant, final PNUCT_VARIANT variant)
 	{
 		this.explorationConstant = explorationConstant;
 		this.pnConstant = pnConstant;
@@ -90,21 +90,21 @@ public final class PNS_UCB1 implements SelectionStrategy
         final int moverAgent = state.playerToAgent(state.mover());
         final double unvisitedValueEstimate = current.valueEstimateUnvisitedChildren(moverAgent);
 
-        final PNMCTSNode currentPNMCTSNode = (PNMCTSNode) current;
-        if (currentPNMCTSNode.childSelectionScoresDirty())
+        final MP_PNMCTSNode currentMP_PNMCTSNode = (MP_PNMCTSNode) current;
+        if (currentMP_PNMCTSNode.childSelectionScoresDirty())
         {
-        	updateChildrenSelectionScores(currentPNMCTSNode);
+        	updateChildrenSelectionScores(currentMP_PNMCTSNode);
         }
         
         for (int i = 0; i < numChildren; ++i) 
         {
-        	final PNMCTSNode child = (PNMCTSNode) current.childForNthLegalMove(i);
+        	final MP_PNMCTSNode child = (MP_PNMCTSNode) current.childForNthLegalMove(i);
         	
         	// TODO the isValueProven() check shouldn't be necessary if we 
         	// backpropagate early for solved nodes
         	if (child != null && !current.isValueProven(moverAgent)) 
         	{
-                if (child.disproofNumber() == 0 && child.numVisits() > minVisitsSolvedChild) 
+                if (child.proofNumber(currentMP_PNMCTSNode.getCurrentPlayer()) == 0 && child.numVisits() > minVisitsSolvedChild) 
                 	continue;
             }
         	
@@ -123,7 +123,7 @@ public final class PNS_UCB1 implements SelectionStrategy
         		explore = Math.sqrt(parentLog / numVisits);
         	}
         	
-        	final double pnsTerm = currentPNMCTSNode.childrenPNSSelectionTerms()[i];
+        	final double pnsTerm = currentMP_PNMCTSNode.childrenPNSSelectionTerms()[i];
 
         	final double ucb1Value = exploit + explorationConstant * explore + pnConstant * pnsTerm;
         	//System.out.println("ucb1Value = " + ucb1Value);
@@ -156,52 +156,32 @@ public final class PNS_UCB1 implements SelectionStrategy
 	 * Updates the PN-based terms of the selection strategy for all children of current.
 	 * @param current
 	 */
-	public void updateChildrenSelectionScores(final PNMCTSNode current)
+	public void updateChildrenSelectionScores(final MP_PNMCTSNode current)
 	{
 		//  This is the array that we'll re-compute
 		final double[] childrenPNSSelectionTerms = current.childrenPNSSelectionTerms();
-		final PNMCTSNodeTypes currentNodeType = current.nodeType();
 		final int numLegalMoves = current.numLegalMoves();
+		final int currentPlayer = current.getCurrentPlayer();
 		
 		switch(pnsVariant)
         {
             case RANK:
             	final List<ScoredInt> sortedChildIndices = new ArrayList<ScoredInt>();
             	
-            	if (currentNodeType == PNMCTSNodeTypes.AND_NODE)
-            	{
-            		// AND node
-            		for (int i = 0; i < numLegalMoves; ++i)
+        		// OR node
+        		for (int i = 0; i < numLegalMoves; ++i)
+				{
+					final MP_PNMCTSNode child = (MP_PNMCTSNode) current.childForNthLegalMove(i);
+					if (child == null)
 					{
-						final PNMCTSNode child = (PNMCTSNode) current.childForNthLegalMove(i);
-						if (child == null)
-						{
-							// This means: disproof number = 1.0 for unexpanded child. TODO this correct?
-							sortedChildIndices.add(new ScoredInt(i, 1.0));
-						}
-						else
-						{
-							sortedChildIndices.add(new ScoredInt(i, child.disproofNumber()));
-						}
+						// This means: proof number = 1.0 for unexpanded child. TODO this correct?
+						sortedChildIndices.add(new ScoredInt(i, 1.0));
 					}
-            	}
-            	else
-            	{
-            		// OR node
-            		for (int i = 0; i < numLegalMoves; ++i)
+					else
 					{
-						final PNMCTSNode child = (PNMCTSNode) current.childForNthLegalMove(i);
-						if (child == null)
-						{
-							// This means: proof number = 1.0 for unexpanded child. TODO this correct?
-							sortedChildIndices.add(new ScoredInt(i, 1.0));
-						}
-						else
-						{
-							sortedChildIndices.add(new ScoredInt(i, child.proofNumber()));
-						}
+						sortedChildIndices.add(new ScoredInt(i, child.proofNumber(currentPlayer)));
 					}
-            	}
+				}
 
             	Collections.sort(sortedChildIndices, ScoredInt.ASCENDING);
             	double lastNum = Double.NaN;
@@ -234,57 +214,37 @@ public final class PNS_UCB1 implements SelectionStrategy
 
                 double sum = 0.0;
                 
-                if (currentNodeType == PNMCTSNodeTypes.AND_NODE)
-            	{
-            		// AND node
-                	for (int i = 0; i < numLegalMoves; ++i)
+                
+            	// OR node
+            	for (int i = 0; i < numLegalMoves; ++i)
+				{
+					final MP_PNMCTSNode child = (MP_PNMCTSNode) current.childForNthLegalMove(i);
+					if (child == null)
 					{
-						final PNMCTSNode child = (PNMCTSNode) current.childForNthLegalMove(i);
-						if (child == null)
-						{
-							// This means: disproof number = 1.0 for unexpanded child. TODO this correct?
-							sum += 1.0;
-						}
-						else
-						{
-							if (Double.isFinite(child.disproofNumber()))
-								sum += child.disproofNumber();
-						}
+						// This means: proof number = 1.0 for unexpanded child. TODO this correct?
+						sum += 1.0;
 					}
-            	}
-                else
-                {
-                	// OR node
-                	for (int i = 0; i < numLegalMoves; ++i)
+					else
 					{
-						final PNMCTSNode child = (PNMCTSNode) current.childForNthLegalMove(i);
-						if (child == null)
-						{
-							// This means: proof number = 1.0 for unexpanded child. TODO this correct?
-							sum += 1.0;
-						}
-						else
-						{
-							if (Double.isFinite(child.proofNumber()))
-								sum += child.proofNumber();
-						}
+						if (Double.isFinite(child.proofNumber(currentPlayer)))
+							sum += child.proofNumber(currentPlayer);
 					}
-                }
+				}
                 
                 if (sum > 0.0)
                 {
                 	for (int i = 0; i < numLegalMoves; ++i)
 					{
-						final PNMCTSNode child = (PNMCTSNode) current.childForNthLegalMove(i);
+						final MP_PNMCTSNode child = (MP_PNMCTSNode) current.childForNthLegalMove(i);
 						final double number;
 						if (child == null)
 						{
-							// This means: (dis)proof number = 1.0 for unexpanded child. TODO this correct?
+							// This means: proof number = 1.0 for unexpanded child. TODO this correct?
 							number = 1.0;
 						}
 						else
 						{
-							number = (currentNodeType == PNMCTSNodeTypes.AND_NODE) ? child.disproofNumber() : child.proofNumber();
+							number = child.proofNumber(currentPlayer);
 						}
 						
 						if (Double.isFinite(number))
@@ -306,46 +266,23 @@ public final class PNS_UCB1 implements SelectionStrategy
             	double max = 0.0;
             	boolean haveInf = false;
                 
-                if (currentNodeType == PNMCTSNodeTypes.AND_NODE)
-            	{
-            		// AND node
-                	for (int i = 0; i < numLegalMoves; ++i)
+            	// OR node
+            	for (int i = 0; i < numLegalMoves; ++i)
+				{
+					final MP_PNMCTSNode child = (MP_PNMCTSNode) current.childForNthLegalMove(i);
+					if (child == null)
 					{
-						final PNMCTSNode child = (PNMCTSNode) current.childForNthLegalMove(i);
-						if (child == null)
-						{
-							// This means: disproof number = 1.0 for unexpanded child. TODO this correct?
-							max = Math.max(max, 1.0);
-						}
-						else
-						{
-							if (Double.isFinite(child.disproofNumber()))
-								max = Math.max(max, child.disproofNumber());
-							else
-								haveInf = true;
-						}
+						// This means: proof number = 1.0 for unexpanded child. TODO this correct?
+						max = Math.max(max, 1.0);
 					}
-            	}
-                else
-                {
-                	// OR node
-                	for (int i = 0; i < numLegalMoves; ++i)
+					else
 					{
-						final PNMCTSNode child = (PNMCTSNode) current.childForNthLegalMove(i);
-						if (child == null)
-						{
-							// This means: proof number = 1.0 for unexpanded child. TODO this correct?
-							max = Math.max(max, 1.0);
-						}
+						if (Double.isFinite(child.proofNumber(currentPlayer)))
+							max = Math.max(max, child.proofNumber(currentPlayer));
 						else
-						{
-							if (Double.isFinite(child.proofNumber()))
-								max = Math.max(max, child.proofNumber());
-							else
-								haveInf = true;
-						}
+							haveInf = true;
 					}
-                }
+				}
                 
                 if (haveInf)
                 	max += 1.0;
@@ -354,7 +291,7 @@ public final class PNS_UCB1 implements SelectionStrategy
                 {
                 	for (int i = 0; i < numLegalMoves; ++i)
 					{
-						final PNMCTSNode child = (PNMCTSNode) current.childForNthLegalMove(i);
+						final MP_PNMCTSNode child = (MP_PNMCTSNode) current.childForNthLegalMove(i);
 						final double number;
 						if (child == null)
 						{
@@ -363,7 +300,7 @@ public final class PNS_UCB1 implements SelectionStrategy
 						}
 						else
 						{
-							number = (currentNodeType == PNMCTSNodeTypes.AND_NODE) ? child.disproofNumber() : child.proofNumber();
+							number = child.proofNumber(currentPlayer);
 						}
 						
 						if (Double.isFinite(number))
@@ -392,7 +329,7 @@ public final class PNS_UCB1 implements SelectionStrategy
 	@Override
 	public int backpropFlags()
 	{
-		return BackpropagationStrategy.PROOF_DISPROOF_NUMBERS;
+		return BackpropagationStrategy.PROOF_DISPROOF_NUMBERS | BackpropagationStrategy.MULTIPLAYER_PNSMCTS;
 	}
 	
 	@Override
