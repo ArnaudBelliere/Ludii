@@ -1,10 +1,8 @@
 package search.mcts.backpropagation;
 
-import main.math.statistics.IncrementalStats;
 import other.context.Context;
 import search.mcts.MCTS;
 import search.mcts.nodes.BaseNode;
-import utils.AIUtils;
 
 public class MP_PNSMCTSBackprop extends BackpropagationStrategy
 {
@@ -25,6 +23,8 @@ public class MP_PNSMCTSBackprop extends BackpropagationStrategy
 	@Override
 	public int backpropagationFlags()
 	{
+		// TODO can't we remove this entire class? PNs are necessary if our Selection strategy wants them, so our
+		// Selection strategy can then already return this flag. This class does not do anything else.
 		return BackpropagationStrategy.PROOF_DISPROOF_NUMBERS | BackpropagationStrategy.MULTIPLAYER_PNSMCTS;
 	}
 	

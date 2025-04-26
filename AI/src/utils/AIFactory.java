@@ -46,6 +46,7 @@ import search.mcts.finalmoveselection.RobustChild;
 import search.mcts.playout.MAST;
 import search.mcts.playout.NST;
 import search.mcts.playout.RandomPlayout;
+import search.mcts.selection.MP_PNS_UCB;
 import search.mcts.selection.McBRAVE;
 import search.mcts.selection.McGRAVE;
 import search.mcts.selection.PNS_UCB1;
@@ -260,18 +261,12 @@ public class AIFactory
 		
 		if (string.equalsIgnoreCase("PN-MCTS"))
 		{
-			final MCTS pnmcts = 
-					new MCTS
-					(
-						new PNS_UCB1(), 
-						new RandomPlayout(200),
-						new MonteCarloBackprop(),
-						new RobustChild()
-					);
-			
-			pnmcts.setFriendlyName("PN-MCTS");
-			
-			return pnmcts;
+			return MCTS.createPNSMCTS(Math.sqrt(2.0), PNS_UCB1.PNUCT_VARIANT.RANK);
+		}
+		
+		if (string.equalsIgnoreCase("MP-PN-MCTS"))
+		{
+			return MCTS.createMPPNSMCTS(Math.sqrt(2.0), MP_PNS_UCB.PNUCT_VARIANT.RANK);
 		}
 		
 		if (string.equalsIgnoreCase("Ludii AI"))
@@ -637,6 +632,10 @@ public class AIFactory
 		else if (algName.equalsIgnoreCase("PN-MCTS"))
 		{
 			return createAI("PN-MCTS");
+		}
+		else if (algName.equalsIgnoreCase("MP-PN-MCTS"))
+		{
+			return createAI("MP-PN-MCTS");
 		}
 		else if (algName.equalsIgnoreCase("Biased MCTS"))
 		{

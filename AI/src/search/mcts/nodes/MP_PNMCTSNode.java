@@ -61,7 +61,7 @@ public final class MP_PNMCTSNode extends DeterministicNode
 	protected int numPlayers;
 	
 	/** what type of node are we? */
-	protected MP_PNMCTSNodeTypes type;
+	protected MP_PNMCTSNodeTypes type;		// TODO can remove type altogether? and, hence, also the enum?
 	
 	/** The value (in terms of proven/disproven/dont know) for this node */
 	protected MP_PNMCTSNodeValues[] proofValue;
