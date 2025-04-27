@@ -134,29 +134,27 @@ public final class ScoreBoundsPNMCTSNode extends IPNMCTSNode
      */
     public void evaluate() 
     {
-        if (this.context.trial().over()) 
-        {
-        	final double[] utilities = RankUtils.utilities(this.context);
-        	
-        	for (int p = 1; p <= numPlayers; ++p)
-        	{
-        		// TODO instead of checking for 1.0, we should check for best-possible-in-root?
-        		if (utilities[p] == 1.0)
-        		{
-        			this.proofValue[p] = MP_PNMCTSNodeValues.TRUE;
-        			proofNumbers[p] = 0.0;
-        		}
-        		else
-        		{
-        			this.proofValue[p] = MP_PNMCTSNodeValues.FALSE;
-        			proofNumbers[p] = Double.POSITIVE_INFINITY;
-        		}
-        	}
-        } 
-        else 
-        {
-            this.proofValue[currentPlayer] = MP_PNMCTSNodeValues.UNKNOWN;
-        }
+    	for (int p = 1; p <= numPlayers; ++p)
+    	{
+    		if (!context.active(p))
+    		{
+    			// TODO check if this handles swap rule correctly
+    			final double rank = context.trial().ranking()[p];
+    			
+    			if (rank == ((MP_PNMCTSNode) parent).bestAvailableRank)
+    			{
+    				// proven node
+    				proofNumbers[p] = 0.0;
+    				proofValue[p] = MP_PNMCTSNodeValues.TRUE;
+    			}
+    			else
+    			{
+    				// disproven node
+    				proofNumbers[p] = Double.POSITIVE_INFINITY;
+    				proofValue[p] = MP_PNMCTSNodeValues.FALSE;
+    			}
+    		}
+    	}
     }
     
     @Override
@@ -168,12 +166,12 @@ public final class ScoreBoundsPNMCTSNode extends IPNMCTSNode
         	double proof;
         	boolean changed = false;
         	
-        	for(int playerNum = 1; playerNum <= numPlayers; playerNum++)
+        	for (int playerNum = 1; playerNum <= numPlayers; playerNum++)
         	{
-        		if(proofValue[playerNum] == MP_PNMCTSNodeValues.FALSE || proofValue[playerNum] == MP_PNMCTSNodeValues.TRUE)
+        		if (proofValue[playerNum] != MP_PNMCTSNodeValues.UNKNOWN)
         			continue;
 
-        		MP_PNMCTSNodeTypes playerType = (playerNum == currentPlayer ? MP_PNMCTSNodeTypes.OR_NODE : MP_PNMCTSNodeTypes.AND_NODE);
+        		final MP_PNMCTSNodeTypes playerType = (playerNum == currentPlayer ? MP_PNMCTSNodeTypes.OR_NODE : MP_PNMCTSNodeTypes.AND_NODE);
 	        	switch (playerType)
 	        	{
 				case AND_NODE:
@@ -188,7 +186,6 @@ public final class ScoreBoundsPNMCTSNode extends IPNMCTSNode
 						else
 						{
 							// An unexpanded child
-							// TODO verify that this is indeed what we want to do?
 							proof += 1.0;
 						}
 					}
@@ -197,6 +194,24 @@ public final class ScoreBoundsPNMCTSNode extends IPNMCTSNode
 	                if (this.proofNumbers[playerNum] != proof) 
 	                {
 						this.proofNumbers[playerNum] = proof;
+						
+						if (proof == 0.0) 
+						{
+							proofValue[playerNum] = MP_PNMCTSNodeValues.TRUE;
+							for (int p = 1; p <= numPlayers; p++)
+							{
+								if (p != playerNum)
+								{
+									proofValue[p] = MP_PNMCTSNodeValues.FALSE;
+									proofNumbers[p] = Double.POSITIVE_INFINITY;
+								}
+							}
+						}
+						else if (proof == Double.POSITIVE_INFINITY)
+						{
+							proofValue[playerNum] = MP_PNMCTSNodeValues.FALSE;
+						}
+						
 						changed = true;
 	                }
 	                break;
@@ -218,7 +233,6 @@ public final class ScoreBoundsPNMCTSNode extends IPNMCTSNode
 						else
 						{
 							// An unexpanded child
-							// TODO verify that this is indeed what we want to do?
 							proof = Math.min(1.0, proof);
 						}
 					}
