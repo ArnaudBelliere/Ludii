@@ -42,7 +42,7 @@ public class Run_MP_3P {
     }
 
     public static void main(String[] args) {
-        args = new String[]{"500", "ThreePlayerHex", "200", "rank", "1.0"};
+        args = new String[]{"500", "RajaPasuMandiri", "200", "rank", "1.0"};
 
         final int NUM_PLAYERS = 3;
         
@@ -127,8 +127,13 @@ public class Run_MP_3P {
             
             for(int p = 1; p < ais.size(); ++p)
             {
-            	if(p % NUM_PLAYERS == gameCounter % NUM_PLAYERS)
-            		positions.put((int)(context.trial().ranking()[p]), positions.get((int)context.trial().ranking()[p]) + 1);
+
+            	try {
+	            	if(p % NUM_PLAYERS == gameCounter % NUM_PLAYERS)
+	            		positions.put((int)(context.trial().ranking()[p]), positions.get((int)context.trial().ranking()[p]) + 1);
+            	} catch (Exception e) {
+            		//
+            	}
             }
             
             int winner = context.trial().status().winner();

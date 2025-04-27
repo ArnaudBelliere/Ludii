@@ -42,7 +42,7 @@ public class Run_MP_4P {
     }
 
     public static void main(String[] args) {
-        args = new String[]{"500", "FourPlayerChess", "200", "rank", "1.0"};
+        args = new String[]{"1000", "RajaPasuMandiri", "200", "rank", "100.0"};
 
         boolean RUN_CI_CALC=false;
         boolean VERBOSE=true;
@@ -143,8 +143,12 @@ public class Run_MP_4P {
             
             for(int p = 1; p < ais.size(); ++p)
             {
-            	if(p % 4 == gameCounter % 4)
-            		positions.put((int)(context.trial().ranking()[p]), positions.get((int)context.trial().ranking()[p]) + 1);
+            	try {
+	            	if(p % 4 == gameCounter % 4)
+	            		positions.put((int)(context.trial().ranking()[p]), positions.get((int)context.trial().ranking()[p]) + 1);
+            	} catch (Exception e) {
+            		//
+            	}
             }
             
             int winner = context.trial().status().winner();
