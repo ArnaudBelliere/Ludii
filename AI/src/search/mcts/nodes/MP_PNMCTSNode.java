@@ -10,7 +10,7 @@ import search.mcts.MCTS;
  * 
  * @author Szymon Kosakowski
  */
-public final class MP_PNMCTSNode extends DeterministicNode
+public final class MP_PNMCTSNode extends IPNMCTSNode
 {
 	
 	//-------------------------------------------------------------------------
@@ -65,12 +65,6 @@ public final class MP_PNMCTSNode extends DeterministicNode
 	
 	/** The value (in terms of proven/disproven/dont know) for this node */
 	protected MP_PNMCTSNodeValues[] proofValue;
-	
-	/** Are the cached PNS-based terms of childrens' selection scores outdated? */
-	protected boolean childSelectionScoresDirty = false;
-	
-	/** Cached PNS-based terms for selection scores for all our children (including unexpanded ones) */
-	protected final double[] childrenPNSSelectionTerms;
 	
 	//-------------------------------------------------------------------------
     
@@ -129,8 +123,6 @@ public final class MP_PNMCTSNode extends DeterministicNode
     	
     	evaluate();
         setProofAndDisproofNumbers();
-        
-        childrenPNSSelectionTerms = new double[numLegalMoves()];
     }
     
     //-------------------------------------------------------------------------
@@ -166,16 +158,7 @@ public final class MP_PNMCTSNode extends DeterministicNode
         }
     }
     
-    /**
-     * Sets the proof and disproof values of the current node as it is done for 
-     * PNS in L. V. Allis' "Searching for Solutions in Games and Artificial 
-     * Intelligence". Set differently depending on if the node has children yet.
-     * 
-     * In multiplayer PNSMCTS version only proofNumbers are used.
-     *
-     * @return Returns true if something was changed and false if not. 
-     * Used to improve PN-MCTS speed.
-     */
+    @Override
     public boolean setProofAndDisproofNumbers() 
     {
         if (legalMoves.length > 0) 
@@ -301,14 +284,6 @@ public final class MP_PNMCTSNode extends DeterministicNode
     }
     
     /**
-     * @return Do our childrens' PNS-based selection terms need updating?
-     */
-    public boolean childSelectionScoresDirty()
-    {
-    	return childSelectionScoresDirty;
-    }
-    
-    /**
      * @return What type of node are we? (OR / AND)
      */
     public MP_PNMCTSNodeTypes nodeType()
@@ -317,30 +292,11 @@ public final class MP_PNMCTSNode extends DeterministicNode
     }
     
     /**
-     * Store a flag saying whether the cached PNS-based terms of our childrens'
-     * selection scores are (potentially) outdated.
-     * 
-     * @param newFlag
-     */
-    public void setSelectionScoresDirtyFlag(final boolean newFlag)
-    {
-    	childSelectionScoresDirty = newFlag;
-    }
-    
-    /**
      * @return Current proof number for this node.
      */
     public double proofNumber(final int player)
     {
     	return proofNumbers[player];
-    }
-    
-    /**
-     * @return Array of PNS-based terms for selection strategy for all of our children.
-     */
-    public double[] childrenPNSSelectionTerms()
-    {
-    	return childrenPNSSelectionTerms;
     }
     
     //-------------------------------------------------------------------------
