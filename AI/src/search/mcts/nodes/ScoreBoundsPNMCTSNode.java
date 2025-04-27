@@ -1,11 +1,11 @@
 package search.mcts.nodes;
 
+import main.math.MathRoutines;
 import other.RankUtils;
 import other.context.Context;
 import other.move.Move;
 import search.mcts.MCTS;
 import search.mcts.nodes.MP_PNMCTSNode.MP_PNMCTSNodeTypes;
-import search.mcts.nodes.MP_PNMCTSNode.MP_PNMCTSNodeValues;
 
 /**
  * Node for combined Score Bounds + Multiplayer PN-MCTS tree.
@@ -22,9 +22,6 @@ public final class ScoreBoundsPNMCTSNode extends IPNMCTSNode
 	
 	/** Proof numbers for this node (one per player) */
 	protected double[] proofNumbers;
-	
-	/** The value (in terms of proven/disproven/dont know) for this node (one per player) */
-	protected MP_PNMCTSNodeValues[] proofValue;
 	
 	/** The player to move in this node. */
 	protected int currentPlayer;
@@ -78,18 +75,14 @@ public final class ScoreBoundsPNMCTSNode extends IPNMCTSNode
     	numPlayers = context.game().players().count();
     	
     	proofNumbers = new double[numPlayers + 1];
-    	proofValue = new MP_PNMCTSNodeValues[numPlayers + 1];
    
     	for (int p = 1; p <= numPlayers; p++) 
     	{
     		proofNumbers[p] = 1.0;
-    		proofValue[p] = MP_PNMCTSNodeValues.UNKNOWN;
     	}
     	
     	if (parent != null)
     		evaluate();
-    	
-        setProofAndDisproofNumbers();
                 
         pessimisticScores = new double[numPlayers + 1];
     	optimisticScores = new double[numPlayers + 1];
@@ -124,6 +117,8 @@ public final class ScoreBoundsPNMCTSNode extends IPNMCTSNode
 	    		}
 	    	}
     	}
+    	
+    	setProofAndDisproofNumbers();
     }
     
     //-------------------------------------------------------------------------
@@ -141,17 +136,15 @@ public final class ScoreBoundsPNMCTSNode extends IPNMCTSNode
     			// TODO check if this handles swap rule correctly
     			final double rank = context.trial().ranking()[p];
     			
-    			if (rank == ((MP_PNMCTSNode) parent).bestAvailableRank)
+    			if (rank == ((ScoreBoundsPNMCTSNode) parent).bestAvailableRank)
     			{
     				// proven node
     				proofNumbers[p] = 0.0;
-    				proofValue[p] = MP_PNMCTSNodeValues.TRUE;
     			}
     			else
     			{
     				// disproven node
     				proofNumbers[p] = Double.POSITIVE_INFINITY;
-    				proofValue[p] = MP_PNMCTSNodeValues.FALSE;
     			}
     		}
     	}
@@ -168,7 +161,7 @@ public final class ScoreBoundsPNMCTSNode extends IPNMCTSNode
         	
         	for (int playerNum = 1; playerNum <= numPlayers; playerNum++)
         	{
-        		if (proofValue[playerNum] != MP_PNMCTSNodeValues.UNKNOWN)
+        		if (proofNumbers[playerNum] == 0.0 || proofNumbers[playerNum] == Double.POSITIVE_INFINITY)
         			continue;
 
         		final MP_PNMCTSNodeTypes playerType = (playerNum == currentPlayer ? MP_PNMCTSNodeTypes.OR_NODE : MP_PNMCTSNodeTypes.AND_NODE);
@@ -197,19 +190,13 @@ public final class ScoreBoundsPNMCTSNode extends IPNMCTSNode
 						
 						if (proof == 0.0) 
 						{
-							proofValue[playerNum] = MP_PNMCTSNodeValues.TRUE;
 							for (int p = 1; p <= numPlayers; p++)
 							{
 								if (p != playerNum)
 								{
-									proofValue[p] = MP_PNMCTSNodeValues.FALSE;
 									proofNumbers[p] = Double.POSITIVE_INFINITY;
 								}
 							}
-						}
-						else if (proof == Double.POSITIVE_INFINITY)
-						{
-							proofValue[playerNum] = MP_PNMCTSNodeValues.FALSE;
 						}
 						
 						changed = true;
@@ -243,19 +230,13 @@ public final class ScoreBoundsPNMCTSNode extends IPNMCTSNode
 						
 						if (proof == 0.0) 
 						{
-							proofValue[playerNum] = MP_PNMCTSNodeValues.TRUE;
 							for (int p = 1; p <= numPlayers; p++)
 							{
 								if (p != playerNum)
 								{
-									proofValue[p] = MP_PNMCTSNodeValues.FALSE;
 									proofNumbers[p] = Double.POSITIVE_INFINITY;
 								}
 							}
-						}
-						else if (proof == Double.POSITIVE_INFINITY)
-						{
-							proofValue[playerNum] = MP_PNMCTSNodeValues.FALSE;
 						}
 						
 						changed = true;
@@ -273,24 +254,18 @@ public final class ScoreBoundsPNMCTSNode extends IPNMCTSNode
         else 
         {
         	// Terminal node!
+        	final double treatAsWinUtil = RankUtils.rankToUtil(((ScoreBoundsPNMCTSNode) parent).bestAvailableRank, numPlayers);
         	
-        	for(int playerNum = 1; playerNum <= numPlayers; playerNum++)
+        	for (int playerNum = 1; playerNum <= numPlayers; playerNum++)
         	{
-	        	switch (proofValue[playerNum])
-	        	{
-				case FALSE:
-					this.proofNumbers[playerNum] = Double.POSITIVE_INFINITY;
-					break;
-				case TRUE:
-					this.proofNumbers[playerNum] = 0.0;
-					break;
-				case UNKNOWN:
-					System.err.println("Terminal node has UNKNOWN proof value in MP_PNMCTSNode!");
-					break;
-				default:
-					System.err.println("Unknown proof value in MP_PNMCTSNode.setProofAndDisproofNumbers()");
-					break;
-	        	}
+        		if (pessimisticScores[playerNum] == treatAsWinUtil)
+        		{
+        			this.proofNumbers[playerNum] = 0.0;
+        		}
+        		else if (optimisticScores[playerNum] < treatAsWinUtil)
+        		{
+        			this.proofNumbers[playerNum] = Double.POSITIVE_INFINITY;
+        		}
         	}
         }
         
@@ -320,7 +295,7 @@ public final class ScoreBoundsPNMCTSNode extends IPNMCTSNode
     	if (pessimisticScores[agent] == optimisticScores[agent])
     		return pessimisticScores[agent];	// Solved this score
     	
-    	return super.expectedScore(agent);
+    	return MathRoutines.clip(super.expectedScore(agent), pessimisticScores[agent], optimisticScores[agent]);
     }
     
     @Override

@@ -1,5 +1,6 @@
 package search.mcts.nodes;
 
+import main.math.MathRoutines;
 import other.RankUtils;
 import other.context.Context;
 import other.move.Move;
@@ -95,7 +96,7 @@ public final class ScoreBoundsNode extends DeterministicNode
     	if (pessimisticScores[agent] == optimisticScores[agent])
     		return pessimisticScores[agent];	// Solved this score
     	
-    	return super.expectedScore(agent);
+    	return MathRoutines.clip(super.expectedScore(agent), pessimisticScores[agent], optimisticScores[agent]);
     }
     
     @Override

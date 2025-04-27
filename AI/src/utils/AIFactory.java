@@ -52,6 +52,7 @@ import search.mcts.selection.McGRAVE;
 import search.mcts.selection.PNS_UCB1;
 import search.mcts.selection.ProgressiveBias;
 import search.mcts.selection.ProgressiveHistory;
+import search.mcts.selection.ScoreBoundedMP_PNS_UCB;
 import search.mcts.selection.UCB1;
 import search.mcts.selection.UCB1GRAVE;
 import search.mcts.selection.UCB1Tuned;
@@ -267,6 +268,11 @@ public class AIFactory
 		if (string.equalsIgnoreCase("MP-PN-MCTS"))
 		{
 			return MCTS.createMPPNSMCTS(1.0, MP_PNS_UCB.PNUCT_VARIANT.RANK);
+		}
+		
+		if (string.equalsIgnoreCase("Score Bounded MP-PN-MCTS"))
+		{
+			return MCTS.createScoreBoundedMPPNSMCTS(1.0, ScoreBoundedMP_PNS_UCB.PNUCT_VARIANT.RANK);
 		}
 		
 		if (string.equalsIgnoreCase("Ludii AI"))
@@ -636,6 +642,10 @@ public class AIFactory
 		else if (algName.equalsIgnoreCase("MP-PN-MCTS"))
 		{
 			return createAI("MP-PN-MCTS");
+		}
+		else if (algName.equalsIgnoreCase("Score Bounded MP-PN-MCTS"))
+		{
+			return createAI("Score Bounded MP-PN-MCTS");
 		}
 		else if (algName.equalsIgnoreCase("Biased MCTS"))
 		{

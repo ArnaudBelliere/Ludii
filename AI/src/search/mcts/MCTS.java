@@ -64,6 +64,7 @@ import search.mcts.selection.NoisyAG0Selection;
 import search.mcts.selection.PNS_UCB1;
 import search.mcts.selection.ProgressiveBias;
 import search.mcts.selection.ProgressiveHistory;
+import search.mcts.selection.ScoreBoundedMP_PNS_UCB;
 import search.mcts.selection.SelectionStrategy;
 import search.mcts.selection.UCB1;
 import search.mcts.selection.UCB1GRAVE;
@@ -453,6 +454,23 @@ public class MCTS extends ExpertPolicy
 				);
 		
 		mcts.friendlyName = "MP_PNSMCTS";
+		
+		return mcts;
+	}
+	
+	public static MCTS createScoreBoundedMPPNSMCTS(final double pnsConstant, final ScoreBoundedMP_PNS_UCB.PNUCT_VARIANT pnsVariant)
+	{		
+		final MCTS mcts = 
+				new MCTS
+				(
+					new ScoreBoundedMP_PNS_UCB(Math.sqrt(2), pnsConstant, pnsVariant),
+					new RandomPlayout(200),
+					new MP_PNSMCTSBackprop(),
+					new RobustChild()
+				);
+		
+		mcts.setUseScoreBounds(true);
+		mcts.friendlyName = "Score Bounded MP-PNS-MCTS";
 		
 		return mcts;
 	}
