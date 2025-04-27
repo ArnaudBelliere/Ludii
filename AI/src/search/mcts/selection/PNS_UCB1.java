@@ -228,6 +228,7 @@ public final class PNS_UCB1 implements SelectionStrategy
             		childrenPNSSelectionTerms[childIndex] = (1.0 - (((double) rank) / numLegalMoves));
             	}
 
+            	//System.out.println(Arrays.toString(childrenPNSSelectionTerms));
                 break;
 
             case SUM:

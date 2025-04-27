@@ -10,7 +10,7 @@ import search.mcts.MCTS;
  * 
  * @author Szymon Kosakowski
  */
-public final class MP_PNMCTSNode extends DeterministicNode
+public final class MP_PNMCTSNode extends IPNMCTSNode
 {
 	
 	//-------------------------------------------------------------------------
@@ -48,11 +48,11 @@ public final class MP_PNMCTSNode extends DeterministicNode
 	
 	//-------------------------------------------------------------------------
 	
-	/** Proof number for this node */
+	/** Proof numbers for this node (one per player) */
 	protected double[] proofNumbers;
 	
-	/** The player to move in the root node of the tree this node is in. */
-	protected int rootPlayer;
+	/** The value (in terms of proven/disproven/dont know) for this node (one per player) */
+	protected MP_PNMCTSNodeValues[] proofValue;
 	
 	/** The player to move in this node. */
 	protected int currentPlayer;
@@ -60,17 +60,8 @@ public final class MP_PNMCTSNode extends DeterministicNode
 	/** Number of players in the game. */
 	protected int numPlayers;
 	
-	/** what type of node are we? */
-	protected MP_PNMCTSNodeTypes type;
-	
-	/** The value (in terms of proven/disproven/dont know) for this node */
-	protected MP_PNMCTSNodeValues[] proofValue;
-	
-	/** Are the cached PNS-based terms of childrens' selection scores outdated? */
-	protected boolean childSelectionScoresDirty = false;
-	
-	/** Cached PNS-based terms for selection scores for all our children (including unexpanded ones) */
-	protected final double[] childrenPNSSelectionTerms;
+	/** The best rank that is still unclaimed. This will be the target rank (what we consider "winning" for proving nodes) in our children */
+	protected final double bestAvailableRank;
 	
 	//-------------------------------------------------------------------------
     
@@ -94,15 +85,7 @@ public final class MP_PNMCTSNode extends DeterministicNode
     {
     	super(mcts, parent, parentMove, parentMoveWithoutConseq, context);
     	
-    	if (parent == null)
-    	{
-    		// We are the root node
-    		rootPlayer = context.state().mover();
-    	}
-    	else
-    	{
-    		rootPlayer = ((MP_PNMCTSNode) parent).rootPlayer;
-    	}
+    	bestAvailableRank = context.computeNextWinRank();
     	
     	currentPlayer = context.state().mover();
     	
@@ -112,26 +95,16 @@ public final class MP_PNMCTSNode extends DeterministicNode
     	proofNumbers = new double[numPlayers + 1];
     	proofValue = new MP_PNMCTSNodeValues[numPlayers + 1];
    
-    	for(int p = 1; p <= numPlayers; p++) {
+    	for (int p = 1; p <= numPlayers; p++) 
+    	{
     		proofNumbers[p] = 1.0;
     		proofValue[p] = MP_PNMCTSNodeValues.UNKNOWN;
     	}
     	
+    	if (parent != null)
+    		evaluate();
     	
-    	
-    	if (context.state().mover() == rootPlayer) 
-    	{
-            this.type = MP_PNMCTSNodeTypes.OR_NODE;
-        }
-    	else 
-    	{
-            this.type = MP_PNMCTSNodeTypes.AND_NODE;
-        }
-    	
-    	evaluate();
         setProofAndDisproofNumbers();
-        
-        childrenPNSSelectionTerms = new double[numLegalMoves()];
     }
     
     //-------------------------------------------------------------------------
@@ -142,37 +115,30 @@ public final class MP_PNMCTSNode extends DeterministicNode
      */
     public void evaluate() 
     {
-        if (this.context.trial().over()) 
-        {
-            if (RankUtils.utilities(this.context)[rootPlayer] == 1.0) 
-            {
-                this.proofValue[currentPlayer] = MP_PNMCTSNodeValues.TRUE;
-                for(int p = 1; p <= numPlayers; p++) {
-            		if(p != currentPlayer)
-            			proofValue[p] = MP_PNMCTSNodeValues.FALSE;
-            	}
-            } 
-            else 
-            {
-                this.proofValue[currentPlayer] = MP_PNMCTSNodeValues.FALSE;
-            }
-        } 
-        else 
-        {
-            this.proofValue[currentPlayer] = MP_PNMCTSNodeValues.UNKNOWN;
-        }
+    	for (int p = 1; p <= numPlayers; ++p)
+    	{
+    		if (!context.active(p))
+    		{
+    			// TODO check if this handles swap rule correctly
+    			final double rank = context.trial().ranking()[p];
+    			
+    			if (rank == ((MP_PNMCTSNode) parent).bestAvailableRank)
+    			{
+    				// proven node
+    				proofNumbers[p] = 0.0;
+    				proofValue[p] = MP_PNMCTSNodeValues.TRUE;
+    			}
+    			else
+    			{
+    				// disproven node
+    				proofNumbers[p] = Double.POSITIVE_INFINITY;
+    				proofValue[p] = MP_PNMCTSNodeValues.FALSE;
+    			}
+    		}
+    	}
     }
     
-    /**
-     * Sets the proof and disproof values of the current node as it is done for 
-     * PNS in L. V. Allis' "Searching for Solutions in Games and Artificial 
-     * Intelligence". Set differently depending on if the node has children yet.
-     * 
-     * In multiplayer PNSMCTS version only proofNumbers are used.
-     *
-     * @return Returns true if something was changed and false if not. 
-     * Used to improve PN-MCTS speed.
-     */
+    @Override
     public boolean setProofAndDisproofNumbers() 
     {
         if (legalMoves.length > 0) 
@@ -181,12 +147,12 @@ public final class MP_PNMCTSNode extends DeterministicNode
         	double proof;
         	boolean changed = false;
         	
-        	for(int playerNum = 1; playerNum <= numPlayers; playerNum++)
+        	for (int playerNum = 1; playerNum <= numPlayers; playerNum++)
         	{
-        		if(proofValue[playerNum] == MP_PNMCTSNodeValues.FALSE || proofValue[playerNum] == MP_PNMCTSNodeValues.TRUE)
+        		if (proofValue[playerNum] != MP_PNMCTSNodeValues.UNKNOWN)
         			continue;
 
-        		MP_PNMCTSNodeTypes playerType = (playerNum == currentPlayer ? MP_PNMCTSNodeTypes.OR_NODE : MP_PNMCTSNodeTypes.AND_NODE);
+        		final MP_PNMCTSNodeTypes playerType = (playerNum == currentPlayer ? MP_PNMCTSNodeTypes.OR_NODE : MP_PNMCTSNodeTypes.AND_NODE);
 	        	switch (playerType)
 	        	{
 				case AND_NODE:
@@ -201,15 +167,31 @@ public final class MP_PNMCTSNode extends DeterministicNode
 						else
 						{
 							// An unexpanded child
-							// TODO verify that this is indeed what we want to do?
 							proof += 1.0;
 						}
 					}
 	
-	                // If nothing changed return false
 	                if (this.proofNumbers[playerNum] != proof) 
 	                {
 						this.proofNumbers[playerNum] = proof;
+						
+						if (proof == 0.0) 
+						{
+							proofValue[playerNum] = MP_PNMCTSNodeValues.TRUE;
+							for (int p = 1; p <= numPlayers; p++)
+							{
+								if (p != playerNum)
+								{
+									proofValue[p] = MP_PNMCTSNodeValues.FALSE;
+									proofNumbers[p] = Double.POSITIVE_INFINITY;
+								}
+							}
+						}
+						else if (proof == Double.POSITIVE_INFINITY)
+						{
+							proofValue[playerNum] = MP_PNMCTSNodeValues.FALSE;
+						}
+						
 						changed = true;
 	                }
 	                break;
@@ -222,7 +204,6 @@ public final class MP_PNMCTSNode extends DeterministicNode
 						final MP_PNMCTSNode childNode = (MP_PNMCTSNode) child;
 						if (childNode != null)
 						{
-							
 							if (childNode.proofNumber(playerNum) < proof)
 							{
 								proof = childNode.proofNumber(playerNum);
@@ -231,8 +212,7 @@ public final class MP_PNMCTSNode extends DeterministicNode
 						else
 						{
 							// An unexpanded child
-							// TODO verify that this is indeed what we want to do?
-							proof = 1.0;
+							proof = Math.min(1.0, proof);
 						}
 					}
 
@@ -240,14 +220,22 @@ public final class MP_PNMCTSNode extends DeterministicNode
 	                {
 						this.proofNumbers[playerNum] = proof;
 						
-						if (proof == 0.0) {
+						if (proof == 0.0) 
+						{
 							proofValue[playerNum] = MP_PNMCTSNodeValues.TRUE;
-							for(int p = 1; p <= numPlayers; p++)
-								if(p != playerNum)
+							for (int p = 1; p <= numPlayers; p++)
+							{
+								if (p != playerNum)
+								{
 									proofValue[p] = MP_PNMCTSNodeValues.FALSE;
+									proofNumbers[p] = Double.POSITIVE_INFINITY;
+								}
+							}
 						}
 						else if (proof == Double.POSITIVE_INFINITY)
+						{
 							proofValue[playerNum] = MP_PNMCTSNodeValues.FALSE;
+						}
 						
 						changed = true;
 	                }
@@ -265,7 +253,7 @@ public final class MP_PNMCTSNode extends DeterministicNode
         {
         	// Terminal node!
         	
-        	for(int playerNum = 1; playerNum <= numPlayers; playerNum++)
+        	for (int playerNum = 1; playerNum <= numPlayers; playerNum++)
         	{
 	        	switch (proofValue[playerNum])
 	        	{
@@ -276,7 +264,7 @@ public final class MP_PNMCTSNode extends DeterministicNode
 					this.proofNumbers[playerNum] = 0.0;
 					break;
 				case UNKNOWN:
-					// In multiplayer game it is possible to be terminal (lost) for one player, but still unknown for others
+					System.err.println("Terminal node has UNKNOWN proof value in MP_PNMCTSNode!");
 					break;
 				default:
 					System.err.println("Unknown proof value in MP_PNMCTSNode.setProofAndDisproofNumbers()");
@@ -290,33 +278,6 @@ public final class MP_PNMCTSNode extends DeterministicNode
     }
     
     /**
-     * @return Do our childrens' PNS-based selection terms need updating?
-     */
-    public boolean childSelectionScoresDirty()
-    {
-    	return childSelectionScoresDirty;
-    }
-    
-    /**
-     * @return What type of node are we? (OR / AND)
-     */
-    public MP_PNMCTSNodeTypes nodeType()
-    {
-    	return type;
-    }
-    
-    /**
-     * Store a flag saying whether the cached PNS-based terms of our childrens'
-     * selection scores are (potentially) outdated.
-     * 
-     * @param newFlag
-     */
-    public void setSelectionScoresDirtyFlag(final boolean newFlag)
-    {
-    	childSelectionScoresDirty = newFlag;	// TODO selection strategy will have to account for this
-    }
-    
-    /**
      * @return Current proof number for this node.
      */
     public double proofNumber(final int player)
@@ -324,29 +285,21 @@ public final class MP_PNMCTSNode extends DeterministicNode
     	return proofNumbers[player];
     }
     
-    /**
-     * @return Array of PNS-based terms for selection strategy for all of our children.
-     */
-    public double[] childrenPNSSelectionTerms()
-    {
-    	return childrenPNSSelectionTerms;
-    }
-    
     //-------------------------------------------------------------------------
     
     @Override
     public boolean isValueProven(final int agent)
     {
-    	return (proofValue[agent] != MP_PNMCTSNodeValues.UNKNOWN);
+    	return (proofValue[agent] == MP_PNMCTSNodeValues.TRUE);
     }
     
     @Override
     public double expectedScore(final int agent)
     {
-    	if (rootPlayer == agent)
+    	if (proofValue[agent] == MP_PNMCTSNodeValues.TRUE && parent != null)
     	{
-    		if (proofValue[agent] == MP_PNMCTSNodeValues.TRUE)
-    			return 1.0;
+    		//System.out.println("returning " + RankUtils.rankToUtil(((MP_PNMCTSNode) parent).bestAvailableRank, numPlayers) + " instead of " + super.expectedScore(agent));
+			return RankUtils.rankToUtil(((MP_PNMCTSNode) parent).bestAvailableRank, numPlayers);
     	}
     	
     	return super.expectedScore(agent);

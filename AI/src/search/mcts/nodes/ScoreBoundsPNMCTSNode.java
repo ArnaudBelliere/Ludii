@@ -5,17 +5,32 @@ import other.RankUtils;
 import other.context.Context;
 import other.move.Move;
 import search.mcts.MCTS;
+import search.mcts.nodes.MP_PNMCTSNode.MP_PNMCTSNodeTypes;
 
 /**
- * Node for MCTS tree that tracks pessimistic and optimistic score bounds, for
- * solving of nodes.
+ * Node for combined Score Bounds + Multiplayer PN-MCTS tree.
  * 
- * @author Dennis Soemers
+ * TODO we have a lot of code duplication with both the ScoreBoundsNode
+ * and the MP-PN-MCTSNode. Should think about a way to fix this.
+ * 
+ * @author Szymon Kosakowski & Dennis Soemers
  */
-public final class ScoreBoundsNode extends DeterministicNode
+public final class ScoreBoundsPNMCTSNode extends IPNMCTSNode
 {
 	
 	//-------------------------------------------------------------------------
+	
+	/** Proof numbers for this node (one per player) */
+	protected double[] proofNumbers;
+	
+	/** The player to move in this node. */
+	protected int currentPlayer;
+	
+	/** Number of players in the game. */
+	protected int numPlayers;
+	
+	/** The best rank that is still unclaimed. This will be the target rank (what we consider "winning" for proving nodes) in our children */
+	protected final double bestAvailableRank;
 	
 	/** For every agent, a pessimistic score bound */
 	private final double[] pessimisticScores;
@@ -41,7 +56,7 @@ public final class ScoreBoundsNode extends DeterministicNode
      * @param parentMoveWithoutConseq
      * @param context
      */
-    public ScoreBoundsNode
+    public ScoreBoundsPNMCTSNode
     (
     	final MCTS mcts, 
     	final BaseNode parent, 
@@ -52,8 +67,24 @@ public final class ScoreBoundsNode extends DeterministicNode
     {
     	super(mcts, parent, parentMove, parentMoveWithoutConseq, context);
     	
-    	final int numPlayers = context.game().players().count();
-    	pessimisticScores = new double[numPlayers + 1];
+    	bestAvailableRank = context.computeNextWinRank();
+    	
+    	currentPlayer = context.state().mover();
+    	
+    	// Player 0 is not considered, players start from index 1
+    	numPlayers = context.game().players().count();
+    	
+    	proofNumbers = new double[numPlayers + 1];
+   
+    	for (int p = 1; p <= numPlayers; p++) 
+    	{
+    		proofNumbers[p] = 1.0;
+    	}
+    	
+    	if (parent != null)
+    		evaluate();
+                
+        pessimisticScores = new double[numPlayers + 1];
     	optimisticScores = new double[numPlayers + 1];
     	
     	final double nextWorstScore = RankUtils.rankToUtil(context.computeNextLossRank(), numPlayers);
@@ -81,14 +112,182 @@ public final class ScoreBoundsNode extends DeterministicNode
 	    	{
 	    		if (currentUtils[p] != 0.0)
 	    		{
-	    			((ScoreBoundsNode) parent).updatePessBounds(p, pessimisticScores[p], this);
-		    		((ScoreBoundsNode) parent).updateOptBounds(p, optimisticScores[p], this);
+	    			((ScoreBoundsPNMCTSNode) parent).updatePessBounds(p, pessimisticScores[p], this);
+		    		((ScoreBoundsPNMCTSNode) parent).updateOptBounds(p, optimisticScores[p], this);
 	    		}
 	    	}
     	}
+    	
+    	setProofAndDisproofNumbers();
     }
     
     //-------------------------------------------------------------------------
+    
+    /**
+     * Evaluates a node as in PNS according to L. V. Allis' 
+     * "Searching for Solutions in Games and Artificial Intelligence"
+     */
+    public void evaluate() 
+    {
+    	for (int p = 1; p <= numPlayers; ++p)
+    	{
+    		if (!context.active(p))
+    		{
+    			// TODO check if this handles swap rule correctly
+    			final double rank = context.trial().ranking()[p];
+    			
+    			if (rank == ((ScoreBoundsPNMCTSNode) parent).bestAvailableRank)
+    			{
+    				// proven node
+    				proofNumbers[p] = 0.0;
+    			}
+    			else
+    			{
+    				// disproven node
+    				proofNumbers[p] = Double.POSITIVE_INFINITY;
+    			}
+    		}
+    	}
+    }
+    
+    @Override
+    public boolean setProofAndDisproofNumbers() 
+    {
+        if (legalMoves.length > 0) 
+        {
+        	// Not a terminal node
+        	double proof;
+        	boolean changed = false;
+        	
+        	for (int playerNum = 1; playerNum <= numPlayers; playerNum++)
+        	{
+        		if (proofNumbers[playerNum] == 0.0 || proofNumbers[playerNum] == Double.POSITIVE_INFINITY)
+        			continue;
+
+        		final MP_PNMCTSNodeTypes playerType = (playerNum == currentPlayer ? MP_PNMCTSNodeTypes.OR_NODE : MP_PNMCTSNodeTypes.AND_NODE);
+	        	switch (playerType)
+	        	{
+				case AND_NODE:
+					proof = 0.0;
+					for (final BaseNode child : children)
+					{
+						final ScoreBoundsPNMCTSNode childNode = (ScoreBoundsPNMCTSNode) child;
+						if (childNode != null)
+						{
+							proof += childNode.proofNumber(playerNum);
+						}
+						else
+						{
+							// An unexpanded child
+							proof += 1.0;
+						}
+					}
+	
+	                // If nothing changed return false
+	                if (this.proofNumbers[playerNum] != proof) 
+	                {
+						this.proofNumbers[playerNum] = proof;
+						
+						if (proof == 0.0) 
+						{
+							for (int p = 1; p <= numPlayers; p++)
+							{
+								if (p != playerNum)
+								{
+									proofNumbers[p] = Double.POSITIVE_INFINITY;
+								}
+							}
+						}
+						
+						changed = true;
+	                }
+	                break;
+	                
+				case OR_NODE:
+					proof = Double.POSITIVE_INFINITY;
+					
+					for (final BaseNode child : children)
+					{
+						final ScoreBoundsPNMCTSNode childNode = (ScoreBoundsPNMCTSNode) child;
+						if (childNode != null)
+						{
+							
+							if (childNode.proofNumber(playerNum) < proof)
+							{
+								proof = childNode.proofNumber(playerNum);
+							}
+						}
+						else
+						{
+							// An unexpanded child
+							proof = Math.min(1.0, proof);
+						}
+					}
+
+	                if (this.proofNumbers[playerNum] != proof) 
+	                {
+						this.proofNumbers[playerNum] = proof;
+						
+						if (proof == 0.0) 
+						{
+							for (int p = 1; p <= numPlayers; p++)
+							{
+								if (p != playerNum)
+								{
+									proofNumbers[p] = Double.POSITIVE_INFINITY;
+								}
+							}
+						}
+						
+						changed = true;
+	                }
+	                
+	                break;
+				default:
+					System.err.println("Unknown node type in MP_PNMCTSNode.setProofAndDisproofNumbers()");
+					break;
+	        	}
+        	}
+        	
+        	return changed;
+        } 
+        else 
+        {
+        	// Terminal node!
+        	final double treatAsWinUtil = RankUtils.rankToUtil(((ScoreBoundsPNMCTSNode) parent).bestAvailableRank, numPlayers);
+        	
+        	for (int playerNum = 1; playerNum <= numPlayers; playerNum++)
+        	{
+        		if (pessimisticScores[playerNum] == treatAsWinUtil)
+        		{
+        			this.proofNumbers[playerNum] = 0.0;
+        		}
+        		else if (optimisticScores[playerNum] < treatAsWinUtil)
+        		{
+        			this.proofNumbers[playerNum] = Double.POSITIVE_INFINITY;
+        		}
+        	}
+        }
+        
+        // If we haven't expanded yet it will definitely be changed so return true
+        return true;
+    }
+    
+    /**
+     * @return Current proof number for this node.
+     */
+    public double proofNumber(final int player)
+    {
+    	return proofNumbers[player];
+    }
+    
+    //-------------------------------------------------------------------------
+    
+    @Override
+    public boolean isValueProven(final int agent)
+    {
+    	return (pessimisticScores[agent] == optimisticScores[agent]);
+    }
     
     @Override
     public double expectedScore(final int agent)
@@ -104,7 +303,7 @@ public final class ScoreBoundsNode extends DeterministicNode
     {
     	if (pruned && parent != null)
     	{
-    		final ScoreBoundsNode sbParent = (ScoreBoundsNode) parent;
+    		final ScoreBoundsPNMCTSNode sbParent = (ScoreBoundsPNMCTSNode) parent;
     		if (sbParent.optBound(agent) > pessBound(agent))
     			return -10_000.0;
     	}
@@ -112,11 +311,7 @@ public final class ScoreBoundsNode extends DeterministicNode
     	return super.exploitationScore(agent);
     }
     
-    @Override
-    public boolean isValueProven(final int agent)
-    {
-    	return (pessimisticScores[agent] == optimisticScores[agent]);
-    }
+    public int getCurrentPlayer() { return currentPlayer; }
     
     //-------------------------------------------------------------------------
     
@@ -128,7 +323,7 @@ public final class ScoreBoundsNode extends DeterministicNode
      * @param pessBound
      * @param fromChild Child from which we receive update
      */
-    public void updatePessBounds(final int agent, final double pessBound, final ScoreBoundsNode fromChild)
+    public void updatePessBounds(final int agent, final double pessBound, final ScoreBoundsPNMCTSNode fromChild)
     {
     	final double oldPess = pessimisticScores[agent];
     	
@@ -146,7 +341,7 @@ public final class ScoreBoundsNode extends DeterministicNode
     			// new pessimistic bound as pruned
     			for (int i = 0; i < children.length; ++i)
     			{
-    				final ScoreBoundsNode child = (ScoreBoundsNode) children[i];
+    				final ScoreBoundsPNMCTSNode child = (ScoreBoundsPNMCTSNode) children[i];
     				
     				if (child != null)
     				{
@@ -156,7 +351,7 @@ public final class ScoreBoundsNode extends DeterministicNode
     			}
     			
     			if (parent != null)
-    				((ScoreBoundsNode) parent).updatePessBounds(agent, pessBound, this);
+    				((ScoreBoundsPNMCTSNode) parent).updatePessBounds(agent, pessBound, this);
     		}
     		else
     		{
@@ -170,13 +365,13 @@ public final class ScoreBoundsNode extends DeterministicNode
     			// value for the agent to move.
     			//
     			// This is more expensive to implement though, and only relevant in
-    			// games with more than 2 players, and there likely also only very
+    			// games with more than 2 players, and there likely also only occurs very
     			// rarely, so we don't bother doing this.
     			double minPess = pessBound;
     			
     			for (int i = 0; i < children.length; ++i)
     			{
-    				final ScoreBoundsNode child = (ScoreBoundsNode) children[i];
+    				final ScoreBoundsPNMCTSNode child = (ScoreBoundsPNMCTSNode) children[i];
     				
     				if (child == null)
     				{
@@ -206,7 +401,7 @@ public final class ScoreBoundsNode extends DeterministicNode
     			// We can update
     			pessimisticScores[agent] = minPess;
     			if (parent != null)
-    				((ScoreBoundsNode) parent).updatePessBounds(agent, minPess, this);
+    				((ScoreBoundsPNMCTSNode) parent).updatePessBounds(agent, minPess, this);
     		}
     	}
     }
@@ -219,7 +414,7 @@ public final class ScoreBoundsNode extends DeterministicNode
      * @param optBound
      * @param fromChild Child from which we receive update
      */
-    public void updateOptBounds(final int agent, final double optBound, final ScoreBoundsNode fromChild)
+    public void updateOptBounds(final int agent, final double optBound, final ScoreBoundsPNMCTSNode fromChild)
     {
     	final int moverAgent = contextRef().state().playerToAgent(contextRef().state().mover());
     	if (moverAgent == agent)
@@ -243,7 +438,7 @@ public final class ScoreBoundsNode extends DeterministicNode
 			
 			for (int i = 0; i < children.length; ++i)
 			{
-				final ScoreBoundsNode child = (ScoreBoundsNode) children[i];
+				final ScoreBoundsPNMCTSNode child = (ScoreBoundsPNMCTSNode) children[i];
 				
 				if (child == null)
 				{
@@ -268,7 +463,7 @@ public final class ScoreBoundsNode extends DeterministicNode
 			// We can update
 			optimisticScores[agent] = maxOpt;
 			if (parent != null)
-				((ScoreBoundsNode) parent).updateOptBounds(agent, maxOpt, this);
+				((ScoreBoundsPNMCTSNode) parent).updateOptBounds(agent, maxOpt, this);
     	}
     }
     
@@ -317,7 +512,7 @@ public final class ScoreBoundsNode extends DeterministicNode
     {
     	return pruned;
     }
-    
+
 	//-------------------------------------------------------------------------
 
 }

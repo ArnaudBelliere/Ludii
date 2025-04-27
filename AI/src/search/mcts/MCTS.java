@@ -49,24 +49,26 @@ import search.mcts.finalmoveselection.MaxAvgScore;
 import search.mcts.finalmoveselection.ProportionalExpVisitCount;
 import search.mcts.finalmoveselection.RobustChild;
 import search.mcts.nodes.BaseNode;
+import search.mcts.nodes.MP_PNMCTSNode;
 import search.mcts.nodes.OpenLoopNode;
 import search.mcts.nodes.PNMCTSNode;
-import search.mcts.nodes.MP_PNMCTSNode;
 import search.mcts.nodes.ScoreBoundsNode;
+import search.mcts.nodes.ScoreBoundsPNMCTSNode;
 import search.mcts.nodes.StandardNode;
 import search.mcts.playout.HeuristicSampingPlayout;
 import search.mcts.playout.PlayoutStrategy;
 import search.mcts.playout.RandomPlayout;
 import search.mcts.selection.AG0Selection;
+import search.mcts.selection.MP_PNS_UCB;
 import search.mcts.selection.NoisyAG0Selection;
+import search.mcts.selection.PNS_UCB1;
 import search.mcts.selection.ProgressiveBias;
 import search.mcts.selection.ProgressiveHistory;
+import search.mcts.selection.ScoreBoundedMP_PNS_UCB;
 import search.mcts.selection.SelectionStrategy;
 import search.mcts.selection.UCB1;
 import search.mcts.selection.UCB1GRAVE;
 import search.mcts.selection.UCB1Tuned;
-import search.mcts.selection.PNS_UCB1;
-import search.mcts.selection.MP_PNS_UCB;
 import training.expert_iteration.ExItExperience;
 import training.expert_iteration.ExpertPolicy;
 import utils.AIUtils;
@@ -452,6 +454,23 @@ public class MCTS extends ExpertPolicy
 				);
 		
 		mcts.friendlyName = "MP_PNSMCTS";
+		
+		return mcts;
+	}
+	
+	public static MCTS createScoreBoundedMPPNSMCTS(final double pnsConstant, final ScoreBoundedMP_PNS_UCB.PNUCT_VARIANT pnsVariant)
+	{		
+		final MCTS mcts = 
+				new MCTS
+				(
+					new ScoreBoundedMP_PNS_UCB(Math.sqrt(2), pnsConstant, pnsVariant),
+					new RandomPlayout(200),
+					new MP_PNSMCTSBackprop(),
+					new RobustChild()
+				);
+		
+		mcts.setUseScoreBounds(true);
+		mcts.friendlyName = "Score Bounded MP-PNS-MCTS";
 		
 		return mcts;
 	}
@@ -899,7 +918,9 @@ public class MCTS extends ExpertPolicy
 		if ((currentGameFlags & GameType.Stochastic) == 0L || wantsCheatRNG())
 		{
 			if ((backpropFlags & BackpropagationStrategy.PROOF_DISPROOF_NUMBERS) != 0)
-				if((backpropFlags & BackpropagationStrategy.MULTIPLAYER_PNSMCTS) != 0)
+				if (useScoreBounds)
+					return new ScoreBoundsPNMCTSNode(mcts, parent, parentMove, parentMoveWithoutConseq, context);
+				else if ((backpropFlags & BackpropagationStrategy.MULTIPLAYER_PNSMCTS) != 0)
 					return new MP_PNMCTSNode(mcts, parent, parentMove, parentMoveWithoutConseq, context);
 				else
 					return new PNMCTSNode(mcts, parent, parentMove, parentMoveWithoutConseq, context);

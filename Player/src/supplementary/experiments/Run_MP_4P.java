@@ -1,20 +1,22 @@
 package supplementary.experiments;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import game.Game;
+import main.StringRoutines;
 import other.AI;
 import other.GameLoader;
 import other.context.Context;
 import other.model.Model;
 import other.trial.Trial;
 import search.mcts.MCTS;
-import search.mcts.selection.PNS_UCB1;
 import search.mcts.selection.MP_PNS_UCB;
-
-
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.InputStreamReader;
-import java.util.*;
 
 public class Run_MP_4P {
     //Map<String, String> gameFiles  = new HashMap<String, String>() {{put("LOA7x7", "Lines of Action 7x7");put("LOA8x8", "Lines of Action 8x8");put("Minishogi", "Minishogi");put("Knightthrough", "Knightthrough");put("Awari", "Awari");}};
@@ -35,8 +37,8 @@ public class Run_MP_4P {
         try {
             Process p = Runtime.getRuntime().exec(String.format("python%s scripts/confidence_calculator.py %d %d %d", System.getProperty("os.name").toLowerCase().contains("windows") ? "" : "3", results.get(ALGO_NAME), draws, results.get("MCTS")));
             BufferedReader pout = new BufferedReader(new InputStreamReader(p.getInputStream()));
-            {String s = null;; while ((s = pout.readLine()) != null) {System.out.println(""+s.stripTrailing());}}
-            BufferedReader perr = new BufferedReader(new InputStreamReader(p.getErrorStream())); {String s = null; while ((s = perr.readLine()) != null) {System.out.println("!>"+s.stripTrailing());}}
+            {String s = null;; while ((s = pout.readLine()) != null) {System.out.println(""+StringRoutines.cleanWhitespace(s));}}
+            BufferedReader perr = new BufferedReader(new InputStreamReader(p.getErrorStream())); {String s = null; while ((s = perr.readLine()) != null) {System.out.println("!>"+StringRoutines.cleanWhitespace(s));}}
             p.waitFor();
         } catch (Exception e) {e.printStackTrace();}
     }

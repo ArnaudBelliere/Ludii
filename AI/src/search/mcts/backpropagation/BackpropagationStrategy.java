@@ -14,8 +14,7 @@ import search.mcts.MCTS.MoveKey;
 import search.mcts.MCTS.NGramMoveKey;
 import search.mcts.nodes.BaseNode;
 import search.mcts.nodes.BaseNode.NodeStatistics;
-import search.mcts.nodes.MP_PNMCTSNode;
-import search.mcts.nodes.PNMCTSNode;
+import search.mcts.nodes.IPNMCTSNode;
 
 /**
  * Abstract class for implementations of backpropagation in MCTS
@@ -107,7 +106,6 @@ public abstract class BackpropagationStrategy
 		final boolean updateGlobalActionStats = ((backpropFlags & GLOBAL_ACTION_STATS) != 0);
 		final boolean updateGlobalNGramActionStats = ((backpropFlags & GLOBAL_NGRAM_ACTION_STATS) != 0);
 		boolean updateProofNumbers = ((backpropFlags & PROOF_DISPROOF_NUMBERS) != 0);
-		final boolean isMultiplayerPNMCTS = ((backpropFlags & MULTIPLAYER_PNSMCTS) != 0);
 		final List<MoveKey> moveKeysAMAF = new ArrayList<MoveKey>();
 		final Iterator<Move> reverseMovesIterator = context.trial().reverseMoveIterator();
 		final int numTrialMoves = context.trial().numMoves();
@@ -156,26 +154,13 @@ public abstract class BackpropagationStrategy
 				
 				if (!firstNode && updateProofNumbers)
 				{
-					if (isMultiplayerPNMCTS)
+					final IPNMCTSNode pnmctsNode = (IPNMCTSNode) node;
+					updateProofNumbers = pnmctsNode.setProofAndDisproofNumbers();
+					
+					if (pnmctsNode.children().length > 0) 
 					{
-						final MP_PNMCTSNode pnmctsNode = (MP_PNMCTSNode) node;
-						updateProofNumbers = pnmctsNode.setProofAndDisproofNumbers();
-						
-						if (pnmctsNode.children().length > 0) 
-						{
-							pnmctsNode.setSelectionScoresDirtyFlag(true);
-	                    }
-					}
-					else
-					{
-						final PNMCTSNode pnmctsNode = (PNMCTSNode) node;
-						updateProofNumbers = pnmctsNode.setProofAndDisproofNumbers();
-						
-						if (pnmctsNode.children().length > 0) 
-						{
-							pnmctsNode.setSelectionScoresDirtyFlag(true);
-	                    }
-					}
+						pnmctsNode.setSelectionScoresDirtyFlag(true);
+                    }
 				}
 				else
 				{
