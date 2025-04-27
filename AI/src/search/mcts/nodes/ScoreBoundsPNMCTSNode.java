@@ -15,13 +15,16 @@ import search.mcts.nodes.MP_PNMCTSNode.MP_PNMCTSNodeValues;
  * 
  * @author Szymon Kosakowski & Dennis Soemers
  */
-public final class ScoreBoundsPNMCTSNode extends DeterministicNode
+public final class ScoreBoundsPNMCTSNode extends IPNMCTSNode
 {
 	
 	//-------------------------------------------------------------------------
 	
-	/** Proof number for this node */
+	/** Proof numbers for this node (one per player) */
 	protected double[] proofNumbers;
+	
+	/** The value (in terms of proven/disproven/dont know) for this node (one per player) */
+	protected MP_PNMCTSNodeValues[] proofValue;
 	
 	/** The player to move in this node. */
 	protected int currentPlayer;
@@ -29,11 +32,8 @@ public final class ScoreBoundsPNMCTSNode extends DeterministicNode
 	/** Number of players in the game. */
 	protected int numPlayers;
 	
-	/** Are the cached PNS-based terms of childrens' selection scores outdated? */
-	protected boolean childSelectionScoresDirty = false;
-	
-	/** Cached PNS-based terms for selection scores for all our children (including unexpanded ones) */
-	protected final double[] childrenPNSSelectionTerms;
+	/** The best rank that is still unclaimed. This will be the target rank (what we consider "winning" for proving nodes) in our children */
+	protected final double bestAvailableRank;
 	
 	/** For every agent, a pessimistic score bound */
 	private final double[] pessimisticScores;
@@ -70,23 +70,27 @@ public final class ScoreBoundsPNMCTSNode extends DeterministicNode
     {
     	super(mcts, parent, parentMove, parentMoveWithoutConseq, context);
     	
+    	bestAvailableRank = context.computeNextWinRank();
+    	
     	currentPlayer = context.state().mover();
     	
     	// Player 0 is not considered, players start from index 1
     	numPlayers = context.game().players().count();
     	
     	proofNumbers = new double[numPlayers + 1];
+    	proofValue = new MP_PNMCTSNodeValues[numPlayers + 1];
    
     	for (int p = 1; p <= numPlayers; p++) 
     	{
     		proofNumbers[p] = 1.0;
+    		proofValue[p] = MP_PNMCTSNodeValues.UNKNOWN;
     	}
     	
-    	evaluate();
+    	if (parent != null)
+    		evaluate();
+    	
         setProofAndDisproofNumbers();
-        
-        childrenPNSSelectionTerms = new double[numLegalMoves()];
-        
+                
         pessimisticScores = new double[numPlayers + 1];
     	optimisticScores = new double[numPlayers + 1];
     	
@@ -155,16 +159,7 @@ public final class ScoreBoundsPNMCTSNode extends DeterministicNode
         }
     }
     
-    /**
-     * Sets the proof and disproof values of the current node as it is done for 
-     * PNS in L. V. Allis' "Searching for Solutions in Games and Artificial 
-     * Intelligence". Set differently depending on if the node has children yet.
-     * 
-     * In multiplayer PNSMCTS version only proofNumbers are used.
-     *
-     * @return Returns true if something was changed and false if not. 
-     * Used to improve PN-MCTS speed.
-     */
+    @Override
     public boolean setProofAndDisproofNumbers() 
     {
         if (legalMoves.length > 0) 
@@ -290,38 +285,11 @@ public final class ScoreBoundsPNMCTSNode extends DeterministicNode
     }
     
     /**
-     * @return Do our childrens' PNS-based selection terms need updating?
-     */
-    public boolean childSelectionScoresDirty()
-    {
-    	return childSelectionScoresDirty;
-    }
-    
-    /**
-     * Store a flag saying whether the cached PNS-based terms of our childrens'
-     * selection scores are (potentially) outdated.
-     * 
-     * @param newFlag
-     */
-    public void setSelectionScoresDirtyFlag(final boolean newFlag)
-    {
-    	childSelectionScoresDirty = newFlag;
-    }
-    
-    /**
      * @return Current proof number for this node.
      */
     public double proofNumber(final int player)
     {
     	return proofNumbers[player];
-    }
-    
-    /**
-     * @return Array of PNS-based terms for selection strategy for all of our children.
-     */
-    public double[] childrenPNSSelectionTerms()
-    {
-    	return childrenPNSSelectionTerms;
     }
     
     //-------------------------------------------------------------------------
