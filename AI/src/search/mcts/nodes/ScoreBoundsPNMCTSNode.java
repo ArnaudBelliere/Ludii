@@ -1,5 +1,7 @@
 package search.mcts.nodes;
 
+import java.util.Arrays;
+
 import main.math.MathRoutines;
 import other.RankUtils;
 import other.context.Context;
@@ -138,8 +140,15 @@ public final class ScoreBoundsPNMCTSNode extends IPNMCTSNode
     			
     			if (rank == ((ScoreBoundsPNMCTSNode) parent).bestAvailableRank)
     			{
-    				// proven node
+    				// As we proved best available rank for p, we can immediately
+    				// disprove all others
+    				Arrays.fill(proofNumbers, Double.POSITIVE_INFINITY);
+    				
+    				// Proven node for player p
     				proofNumbers[p] = 0.0;
+    				
+    				// Break out of the loop through players, as we already handled all
+    				break;
     			}
     			else
     			{
