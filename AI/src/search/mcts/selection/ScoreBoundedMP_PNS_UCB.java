@@ -253,7 +253,7 @@ public final class ScoreBoundedMP_PNS_UCB implements SelectionStrategy
 						}
 						
 						if (Double.isFinite(number))
-							childrenPNSSelectionTerms[i] = (1.0 - (number / sum));
+							childrenPNSSelectionTerms[i] = (1.0 - (number / (1 + sum)));
 						else
 							childrenPNSSelectionTerms[i] = 0.0;
 					}
@@ -269,7 +269,7 @@ public final class ScoreBoundedMP_PNS_UCB implements SelectionStrategy
             case MAX:
             	
             	double max = 0.0;
-            	boolean haveInf = false;
+            	double min = Double.POSITIVE_INFINITY;
                 
             	// OR node
             	for (int i = 0; i < numLegalMoves; ++i)
@@ -279,18 +279,17 @@ public final class ScoreBoundedMP_PNS_UCB implements SelectionStrategy
 					{
 						// This means: proof number = 1.0 for unexpanded child. TODO this correct?
 						max = Math.max(max, 1.0);
+						min = Math.min(min, 1.0);
 					}
 					else
 					{
 						if (Double.isFinite(child.proofNumber(currentPlayer)))
+						{
 							max = Math.max(max, child.proofNumber(currentPlayer));
-						else
-							haveInf = true;
+							min = Math.min(min, child.proofNumber(currentPlayer));
+						}
 					}
 				}
-                
-                if (haveInf)
-                	max += 1.0;
                 
                 if (max > 0.0)
                 {
@@ -309,7 +308,7 @@ public final class ScoreBoundedMP_PNS_UCB implements SelectionStrategy
 						}
 						
 						if (Double.isFinite(number))
-							childrenPNSSelectionTerms[i] = (1.0 - (number / max));
+							childrenPNSSelectionTerms[i] = (1.0 - ( (number - min) / (1 + max - min) ));
 						else
 							childrenPNSSelectionTerms[i] = 0.0;
 					}

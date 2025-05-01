@@ -17,6 +17,8 @@ import other.model.Model;
 import other.trial.Trial;
 import search.mcts.MCTS;
 import search.mcts.selection.MP_PNS_UCB;
+import search.mcts.selection.ScoreBoundedMP_PNS_UCB;
+import utils.AIFactory;
 
 public class Run_MP_4P {
     //Map<String, String> gameFiles  = new HashMap<String, String>() {{put("LOA7x7", "Lines of Action 7x7");put("LOA8x8", "Lines of Action 8x8");put("Minishogi", "Minishogi");put("Knightthrough", "Knightthrough");put("Awari", "Awari");}};
@@ -44,7 +46,7 @@ public class Run_MP_4P {
     }
 
     public static void main(String[] args) {
-        args = new String[]{"500", "FourPlayerChess", "200", "rank", "1.0"};
+//        args = new String[]{"1000", "WellischChess", "200", "rank", "100.0"};
 
         boolean RUN_CI_CALC=false;
         boolean VERBOSE=true;
@@ -59,11 +61,13 @@ public class Run_MP_4P {
         double TIME_FOR_GAME = Double.parseDouble(args[0])/1000;
         int NUM_GAMES = Integer.parseInt(args[2]);
 
-        MP_PNS_UCB.PNUCT_VARIANT pnsMethod = null;
+//      ScoreBoundedMP_PNS_UCB
+//      MP_PNS_UCB
+        ScoreBoundedMP_PNS_UCB.PNUCT_VARIANT pnsMethod = null;
         switch (args[3]) {
-            case "rank": pnsMethod = MP_PNS_UCB.PNUCT_VARIANT.RANK; break;
-            case "sum": pnsMethod = MP_PNS_UCB.PNUCT_VARIANT.SUM; break;
-            case "max": pnsMethod = MP_PNS_UCB.PNUCT_VARIANT.MAX; break;
+            case "rank": pnsMethod = ScoreBoundedMP_PNS_UCB.PNUCT_VARIANT.RANK; break;
+            case "sum": pnsMethod = ScoreBoundedMP_PNS_UCB.PNUCT_VARIANT.SUM; break;
+            case "max": pnsMethod = ScoreBoundedMP_PNS_UCB.PNUCT_VARIANT.MAX; break;
             default: System.err.println("Wrong PNS method, please choose rank, sum, or max");System.err.println(USAGE_ERR);System.exit(1);
         }
 
@@ -90,38 +94,42 @@ public class Run_MP_4P {
 
         long startTime = System.currentTimeMillis();
         for (int gameCounter = 1; gameCounter <= NUM_GAMES; ++gameCounter) {
-//            AI testedAI = new PNSMCTS_2P(finMove, minVisits, pnsConstant, pnsMethod);
-            //AI testedAI = new  MCTS.(finMove, minVisits, pnsConstant, pnsMethod);
-//            AI testedAI = MCTS.createUCT(); // TODO
+//        	AI player = MCTS.createMPPNSMCTS(pnsConstant, pnsMethod);
+        	AI player = MCTS.createScoreBoundedMPPNSMCTS(pnsConstant, pnsMethod);
+        	
+        	AI opponent1 = AIFactory.createAI("ScoreBoundedMCTS");
+        	AI opponent2 = AIFactory.createAI("ScoreBoundedMCTS");
+        	AI opponent3 = AIFactory.createAI("ScoreBoundedMCTS");
+//          AI opponent = AIFactory.createAI("UCT");
 
             List<AI> ais = new ArrayList<>();
             if (gameCounter % 4 == 0) {
                 ais.add(null);
-                ais.add(MCTS.createUCT());
-                ais.add(MCTS.createUCT());
-                ais.add(MCTS.createUCT());
-                ais.add(MCTS.createMPPNSMCTS(pnsConstant, pnsMethod));
+                ais.add(opponent1);
+                ais.add(opponent2);
+                ais.add(opponent3);
+                ais.add(player);
             }
             else if (gameCounter % 4 == 1) {
                 ais.add(null);
-                ais.add(MCTS.createMPPNSMCTS(pnsConstant, pnsMethod));
-                ais.add(MCTS.createUCT());
-                ais.add(MCTS.createUCT());
-                ais.add(MCTS.createUCT());
+                ais.add(player);
+                ais.add(opponent1);
+                ais.add(opponent2);
+                ais.add(opponent3);
             }
             else if (gameCounter % 4 == 2) {
                 ais.add(null);
-                ais.add(MCTS.createUCT());
-                ais.add(MCTS.createMPPNSMCTS(pnsConstant, pnsMethod));
-                ais.add(MCTS.createUCT());
-                ais.add(MCTS.createUCT());
+                ais.add(opponent1);
+                ais.add(player);
+                ais.add(opponent2);
+                ais.add(opponent3);
             }
             else if (gameCounter % 4 == 3) {
                 ais.add(null);
-                ais.add(MCTS.createUCT());
-                ais.add(MCTS.createUCT());
-                ais.add(MCTS.createMPPNSMCTS(pnsConstant, pnsMethod));
-                ais.add(MCTS.createUCT());
+                ais.add(opponent1);
+                ais.add(opponent2);
+                ais.add(player);
+                ais.add(opponent3);
             }
             
             if (gameCounter == 1) {
@@ -145,8 +153,12 @@ public class Run_MP_4P {
             
             for(int p = 1; p < ais.size(); ++p)
             {
-            	if(p % 4 == gameCounter % 4)
-            		positions.put((int)(context.trial().ranking()[p]), positions.get((int)context.trial().ranking()[p]) + 1);
+            	try {
+	            	if(p % 4 == gameCounter % 4)
+	            		positions.put((int)(context.trial().ranking()[p]), positions.get((int)context.trial().ranking()[p]) + 1);
+            	} catch (Exception e) {
+            		//
+            	}
             }
             
             int winner = context.trial().status().winner();
@@ -163,12 +175,13 @@ public class Run_MP_4P {
             if (VERBOSE) 
             {
             	System.out.println(algoInfo(GAME_NAME, TIME_FOR_GAME, gameCounter, finMove, minVisits, args[3], pnsConstant, ALGO_NAME, results.get(ALGO_NAME), draws, results.get("MCTS_1"), results.get("MCTS_2"), results.get("MCTS_3"), startTime));
-            	System.out.println(String.format("Positions claimed: 4: %d, 3: %d, 2: %d, 1: %d", positions.get(4), positions.get(3), positions.get(2), positions.get(1)));
+            	System.out.println(String.format("Positions claimed: 1: %d, 2: %d, 3: %d, 4: %d", positions.get(1), positions.get(2), positions.get(3), positions.get(4)));
             }
         }
 
         System.out.println("===================");
         System.out.println(algoInfo(GAME_NAME, TIME_FOR_GAME, NUM_GAMES, finMove, minVisits, args[3], pnsConstant, ALGO_NAME, results.get(ALGO_NAME), draws, results.get("MCTS_1"), results.get("MCTS_2"), results.get("MCTS_3"), startTime));
+        System.out.println(String.format("Positions claimed: 1: %d, 2: %d, 3: %d, 4: %d", positions.get(1), positions.get(2), positions.get(3), positions.get(4)));
         if (RUN_CI_CALC) calculateConfidence(results, draws, ALGO_NAME);
     }
 }

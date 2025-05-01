@@ -17,6 +17,8 @@ import other.model.Model;
 import other.trial.Trial;
 import search.mcts.MCTS;
 import search.mcts.selection.MP_PNS_UCB;
+import search.mcts.selection.ScoreBoundedMP_PNS_UCB;
+import utils.AIFactory;
 
 public class Run_MP_2P {
     //Map<String, String> gameFiles  = new HashMap<String, String>() {{put("LOA7x7", "Lines of Action 7x7");put("LOA8x8", "Lines of Action 8x8");put("Minishogi", "Minishogi");put("Knightthrough", "Knightthrough");put("Awari", "Awari");}};
@@ -44,7 +46,7 @@ public class Run_MP_2P {
     }
 
     public static void main(String[] args) {
-        args = new String[]{"500", "LinesOfAction7x7", "200", "rank", "1.0"};
+//        args = new String[]{"1000", "Reversi", "500", "rank", "1.0"};
 
         boolean RUN_CI_CALC=false;
         boolean VERBOSE=true;
@@ -59,11 +61,14 @@ public class Run_MP_2P {
         double TIME_FOR_GAME = Double.parseDouble(args[0])/1000;
         int NUM_GAMES = Integer.parseInt(args[2]);
 
-        MP_PNS_UCB.PNUCT_VARIANT pnsMethod = null;
+        
+//        ScoreBoundedMP_PNS_UCB
+//        MP_PNS_UCB
+        ScoreBoundedMP_PNS_UCB.PNUCT_VARIANT pnsMethod = null;
         switch (args[3]) {
-            case "rank": pnsMethod = MP_PNS_UCB.PNUCT_VARIANT.RANK; break;
-            case "sum": pnsMethod = MP_PNS_UCB.PNUCT_VARIANT.SUM; break;
-            case "max": pnsMethod = MP_PNS_UCB.PNUCT_VARIANT.MAX; break;
+            case "rank": pnsMethod = ScoreBoundedMP_PNS_UCB.PNUCT_VARIANT.RANK; break;
+            case "sum": pnsMethod = ScoreBoundedMP_PNS_UCB.PNUCT_VARIANT.SUM; break;
+            case "max": pnsMethod = ScoreBoundedMP_PNS_UCB.PNUCT_VARIANT.MAX; break;
             default: System.err.println("Wrong PNS method, please choose rank, sum, or max");System.err.println(USAGE_ERR);System.exit(1);
         }
 
@@ -71,8 +76,8 @@ public class Run_MP_2P {
 
 
         // ---------------
-        final String ALGO_NAME="pnMCTS_2P";
-        System.out.println("Runner v0.2b - 2P");
+        final String ALGO_NAME="MP_PNS_MCTS";
+        System.out.println("Runner - 2P SB_MP_PNS_MCTS vs SB_MCTS");
         System.out.println(GAME_FILE.getAbsolutePath());
 
         // load and create game
@@ -82,6 +87,8 @@ public class Run_MP_2P {
 
         Map<String, Integer> results = new HashMap<>();
         int draws = 0;
+        
+        
 
         // HARDCODED params to test:
         boolean finMove = false;
@@ -89,15 +96,22 @@ public class Run_MP_2P {
 
         long startTime = System.currentTimeMillis();
         for (int gameCounter = 1; gameCounter <= NUM_GAMES; ++gameCounter) {
-//            AI testedAI = new PNSMCTS_2P(finMove, minVisits, pnsConstant, pnsMethod);
-            //AI testedAI = new  MCTS.(finMove, minVisits, pnsConstant, pnsMethod);
-//            AI testedAI = MCTS.createUCT(); // TODO
+//        	AI player = MCTS.createMPPNSMCTS(pnsConstant, pnsMethod);
+        	AI player = MCTS.createScoreBoundedMPPNSMCTS(pnsConstant, pnsMethod);
+        	
+        	AI opponent = AIFactory.createAI("ScoreBoundedMCTS");
+//          AI opponent = AIFactory.createAI("UCT");
+
+        	if(gameCounter == 1)
+        	{
+        		System.out.println(String.format("Player: %s; Opponent: %s", player.friendlyName(), opponent.friendlyName()));
+        	}
 
             List<AI> ais = new ArrayList<>();
             if (gameCounter % 2 == 0) {
-                ais.add(null); ais.add(MCTS.createUCT()); ais.add(MCTS.createMPPNSMCTS(pnsConstant, pnsMethod));
+                ais.add(null); ais.add(opponent); ais.add(player);
             } else {
-                ais.add(null); ais.add(MCTS.createMPPNSMCTS(pnsConstant, pnsMethod)); ais.add(MCTS.createUCT());
+                ais.add(null); ais.add(player); ais.add(opponent);
             }
             if (gameCounter == 1) { results.put("MCTS", 0); results.put(ALGO_NAME, 0);}
 
