@@ -11,7 +11,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 import decision_trees.classifiers.DecisionTreeNode;
@@ -31,6 +36,7 @@ import game.types.play.RoleType;
 import main.CommandLineArgParse;
 import main.CommandLineArgParse.ArgOption;
 import main.CommandLineArgParse.OptionTypes;
+import main.DaemonThreadFactory;
 import main.FileHandling;
 import main.StringRoutines;
 import main.UnixPrintWriter;
@@ -61,6 +67,9 @@ public final class PlayoutsPerSec
 	/** Number of seconds over which we measure playouts (per game) */
 	private int measureSecs;
 	
+	/** Number of threads to use for parallel playouts */
+	private int numThreads;
+	
 	/** Maximum number of actions to execute per playout (-1 for no cap) */
 	private int playoutActionCap;
 	
@@ -88,6 +97,25 @@ public final class PlayoutsPerSec
 	/** If true, we disable custom (optimised) playout strategies on any games played */
 	private boolean noCustomPlayouts;
 	
+	protected static class PlayoutsTimingData
+	{
+		protected final double seconds;
+		protected final int numPlayouts;
+		protected final int numMoves;
+		
+		public PlayoutsTimingData
+		(
+			final double seconds, 
+			final int numPlayouts, 
+			final int numMoves
+		)
+		{
+			this.seconds = seconds;
+			this.numPlayouts = numPlayouts;
+			this.numMoves = numMoves;
+		}
+	}
+	
 	//-------------------------------------------------------------------------
 	
 	/**
@@ -103,6 +131,7 @@ public final class PlayoutsPerSec
 	/**
 	 * Start the experiment
 	 */
+	@SuppressWarnings("unchecked")
 	public void startExperiment()
 	{
 		final String[] allGameNames = FileHandling.listGames();
@@ -191,14 +220,19 @@ public final class PlayoutsPerSec
 				gameNameToTest.add(name);
 			}
 		}
-
+		
+		if (numThreads <= 0)
+			System.err.println("The number of threads must be >= 1.");
+		
 		if (!suppressPrints)
 		{
 			System.out.println("NUM GAMES = " + gameNameToTest.size());
+			System.out.println("NUM THREADS = " + numThreads);
 	
 			System.out.println();
 			System.out.println("Using " + warmingUpSecs + " warming-up seconds per game.");
 			System.out.println("Measuring results over " + measureSecs + " seconds per game.");
+			
 			System.out.println();
 		}
 
@@ -228,50 +262,90 @@ public final class PlayoutsPerSec
 			// Load features and weights if we want to use them
 			final PlayoutMoveSelector playoutMoveSelector = constructPlayoutMoveSelector(game);
 
-			final Trial trial = new Trial(game);
-			final Context context = new Context(game, trial);
-
-			// Warming up
-			long stopAt = 0L;
-			long start = System.nanoTime();
-			double abortAt = start + warmingUpSecs * 1000000000.0;
-			while (stopAt < abortAt)
 			{
-				game.start(context);
-				game.playout(context, null, 1.0, playoutMoveSelector, -1, playoutActionCap, ThreadLocalRandom.current());
-				stopAt = System.nanoTime();
+				// Warming up (just doing this single-threaded)
+				final Trial trial = new Trial(game);
+				final Context context = new Context(game, trial);
+	
+				long stopAt = 0L;
+				long start = System.nanoTime();
+				double abortAt = start + warmingUpSecs * 1000000000.0;
+				while (stopAt < abortAt)
+				{
+					game.start(context);
+					game.playout(context, null, 1.0, playoutMoveSelector, -1, playoutActionCap, ThreadLocalRandom.current());
+					stopAt = System.nanoTime();
+				}
 			}
 			System.gc();
 
-			// Set up RNG for this game
-			final Random rng;
-			if (seed == -1)
-				rng = ThreadLocalRandom.current();
-			else
-				rng = new Random((long)game.name().hashCode() * (long)seed);
-
 			// The Test
-			stopAt = 0L;
-			start = System.nanoTime();
-			abortAt = start + measureSecs * 1000000000.0;
-			int playouts = 0;
-			int moveDone = 0;
-			while (stopAt < abortAt)
+			final PlayoutsTimingData[] resultsPerThread = new PlayoutsTimingData[numThreads];
+			
+			if (numThreads == 1)
 			{
-				game.start(context);
-				game.playout(context, null, 1.0, playoutMoveSelector, -1, playoutActionCap, rng);
-				moveDone += context.trial().numMoves();
-				stopAt = System.nanoTime();
-				++playouts;
+				// Special case, no need for threads here
+				resultsPerThread[0] = timePlayouts(game, playoutMoveSelector, 0);
 			}
-
-			final double secs = (stopAt - start) / 1000000000.0;
-			final double rate = (playouts / secs);
-			final double rateMove = (moveDone / secs);
+			else
+			{
+				// Multiple threads
+				try (final ExecutorService threadPool = Executors.newFixedThreadPool(numThreads, DaemonThreadFactory.INSTANCE))
+				{
+					@SuppressWarnings("rawtypes")
+					final Future[] resultFutures = new Future[numThreads];
+					
+					for (int threadIdx = 0; threadIdx < numThreads; ++threadIdx)
+					{
+						final int finalThreadIdx = threadIdx;
+						resultFutures[finalThreadIdx] = threadPool.submit(() -> 
+						{
+							return timePlayouts(game, playoutMoveSelector, finalThreadIdx);
+						});
+					}
+					
+					try
+					{
+						for (int i = 0; i < numThreads; ++i)
+						{
+							resultsPerThread[i] = ((Future<PlayoutsTimingData>) resultFutures[i]).get();
+						}
+					}
+					catch (final InterruptedException | ExecutionException e)
+					{
+						e.printStackTrace();
+					}
+					
+					threadPool.shutdown();
+					
+					try
+					{
+						threadPool.awaitTermination(measureSecs * 2, TimeUnit.SECONDS);
+					} 
+					catch (final InterruptedException e)
+					{
+						e.printStackTrace();
+					}
+				}
+			}
+			
+			long sumPlayouts = 0L;
+			long sumMoves = 0L;
+			double sumSeconds = 0.0;
+			
+			for (final PlayoutsTimingData data : resultsPerThread)
+			{
+				sumPlayouts += data.numPlayouts;
+				sumMoves += data.numMoves;
+				sumSeconds += data.seconds;
+			}
+			
+			final double rate = (sumPlayouts / (sumSeconds / numThreads));
+			final double rateMove = (sumMoves / (sumSeconds / numThreads));
 
 			result[1] = String.valueOf(rate);
 			result[2] = String.valueOf(rateMove);
-			result[3] = String.valueOf(playouts);
+			result[3] = String.valueOf(sumPlayouts);
 			results.add(StringRoutines.join(",", result));
 
 			if (!suppressPrints)
@@ -287,6 +361,38 @@ public final class PlayoutsPerSec
 		{
 			e.printStackTrace();
 		}
+	}
+	
+	private PlayoutsTimingData timePlayouts(final Game game, final PlayoutMoveSelector playoutMoveSelector, final int threadIdx)
+	{
+		// Set up RNG for this game
+		final Random rng;
+		if (seed == -1)
+			rng = ThreadLocalRandom.current();
+		else
+			rng = new Random((long)game.name().hashCode() * (long)(seed + threadIdx));
+		
+		final Trial trial = new Trial(game);
+		final Context context = new Context(game, trial);
+		int playouts = 0;
+		int moveDone = 0;
+		
+		long stopAt = 0L;
+		final long start = System.nanoTime();
+		final double abortAt = start + measureSecs * 1000000000.0;
+		
+		while (stopAt < abortAt)
+		{
+			game.start(context);
+			game.playout(context, null, 1.0, playoutMoveSelector, -1, playoutActionCap, rng);
+			moveDone += context.trial().numMoves();
+			stopAt = System.nanoTime();
+			++playouts;
+		}
+
+		final double secs = (stopAt - start) / 1000000000.0;
+		
+		return new PlayoutsTimingData(secs, playouts, moveDone);
 	}
 	
 	//-------------------------------------------------------------------------
@@ -768,6 +874,12 @@ public final class PlayoutsPerSec
 				.withNumVals(1)
 				.withType(OptionTypes.Int));
 		argParse.addOption(new ArgOption()
+				.withNames("--num-threads")
+				.help("Number of threads to use for parallel playouts.")
+				.withDefault(Integer.valueOf(1))
+				.withNumVals(1)
+				.withType(OptionTypes.Int));
+		argParse.addOption(new ArgOption()
 				.withNames("--playout-action-cap")
 				.help("Maximum number of actions to execute per playout (-1 for no cap).")
 				.withDefault(Integer.valueOf(-1))
@@ -831,6 +943,7 @@ public final class PlayoutsPerSec
 		
 		experiment.warmingUpSecs = argParse.getValueInt("--warming-up-secs");
 		experiment.measureSecs = argParse.getValueInt("--measure-secs");
+		experiment.numThreads = argParse.getValueInt("--num-threads");
 		experiment.playoutActionCap = argParse.getValueInt("--playout-action-cap");
 		experiment.seed = argParse.getValueInt("--seed");
 		experiment.gameNames = (List<String>) argParse.getValue("--game-names");
