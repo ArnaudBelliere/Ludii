@@ -290,42 +290,42 @@ public final class PlayoutsPerSec
 			else
 			{
 				// Multiple threads
-				try (final ExecutorService threadPool = Executors.newFixedThreadPool(numThreads, DaemonThreadFactory.INSTANCE))
+				@SuppressWarnings("resource")
+				final ExecutorService threadPool = Executors.newFixedThreadPool(numThreads, DaemonThreadFactory.INSTANCE);
+				
+				@SuppressWarnings("rawtypes")
+				final Future[] resultFutures = new Future[numThreads];
+				
+				for (int threadIdx = 0; threadIdx < numThreads; ++threadIdx)
 				{
-					@SuppressWarnings("rawtypes")
-					final Future[] resultFutures = new Future[numThreads];
-					
-					for (int threadIdx = 0; threadIdx < numThreads; ++threadIdx)
+					final int finalThreadIdx = threadIdx;
+					resultFutures[finalThreadIdx] = threadPool.submit(() -> 
 					{
-						final int finalThreadIdx = threadIdx;
-						resultFutures[finalThreadIdx] = threadPool.submit(() -> 
-						{
-							return timePlayouts(game, playoutMoveSelector, finalThreadIdx);
-						});
+						return timePlayouts(game, playoutMoveSelector, finalThreadIdx);
+					});
+				}
+				
+				try
+				{
+					for (int i = 0; i < numThreads; ++i)
+					{
+						resultsPerThread[i] = ((Future<PlayoutsTimingData>) resultFutures[i]).get();
 					}
-					
-					try
-					{
-						for (int i = 0; i < numThreads; ++i)
-						{
-							resultsPerThread[i] = ((Future<PlayoutsTimingData>) resultFutures[i]).get();
-						}
-					}
-					catch (final InterruptedException | ExecutionException e)
-					{
-						e.printStackTrace();
-					}
-					
-					threadPool.shutdown();
-					
-					try
-					{
-						threadPool.awaitTermination(measureSecs * 2, TimeUnit.SECONDS);
-					} 
-					catch (final InterruptedException e)
-					{
-						e.printStackTrace();
-					}
+				}
+				catch (final InterruptedException | ExecutionException e)
+				{
+					e.printStackTrace();
+				}
+				
+				threadPool.shutdown();
+				
+				try
+				{
+					threadPool.awaitTermination(measureSecs * 2, TimeUnit.SECONDS);
+				} 
+				catch (final InterruptedException e)
+				{
+					e.printStackTrace();
 				}
 			}
 			
