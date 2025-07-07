@@ -90,6 +90,12 @@
                     (no Pieces P2)
                 ) 
                 (result P1 Win)
+            )
+            (if (and 
+                    (is Mover P2)
+                    (no Pieces P1)
+                ) 
+                (result P2 Win)
             ) 
             (if (and {
                     (is Mover P2)
@@ -157,7 +163,23 @@
     })
     
     (ai 
-        "Horde Chess_ai"
+        (heuristics {
+	        (material transformation:(divNumInitPlacement) pieceWeights:{
+	            (pair "Pawn1" 1.0)
+	            (pair "Pawn2" 1.0)
+	            (pair "Rook1" 5.0)
+	            (pair "Rook2" 5.0)
+	            (pair "Bishop1" 3.0)
+	            (pair "Bishop2" 3.0)
+	            (pair "Knight1" 3.0)
+	            (pair "Knight2" 3.0)
+	            (pair "Queen1" 9.0)
+	            (pair "Queen2" 9.0)
+	        })
+	        (regionProximity transformation:(divNumInitPlacement) region:1 pieceWeights:{
+	            (pair "Pawn2" 1.0)
+	        })
+	    })
     )
     
 )
