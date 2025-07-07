@@ -14,9 +14,22 @@ import main.CommandLineArgParse.ArgOption;
 import main.CommandLineArgParse.OptionTypes;
 import main.StringRoutines;
 import main.UnixPrintWriter;
+import metrics.Metric;
+import metrics.single.duration.DurationMoves;
+import metrics.single.duration.DurationTurns;
+import metrics.single.duration.DurationTurnsNotTimeouts;
+import metrics.single.duration.DurationTurnsStdDev;
+import metrics.single.outcome.AdvantageP1;
+import metrics.single.outcome.Balance;
+import metrics.single.outcome.Completion;
+import metrics.single.outcome.Drawishness;
+import metrics.single.outcome.OutcomeUniformity;
+import metrics.single.outcome.Timeouts;
+import other.AI;
 import other.GameLoader;
 import other.context.Context;
 import other.trial.Trial;
+import utils.AIFactory;
 
 /**
  * Code to evaluate a single game (in terms of a few basic measures of quality).
@@ -34,6 +47,9 @@ public class EvalGame
 	
 	/** Maximum number of moves per game */
 	private int moveLimit;
+	
+	/** Max allowed thinking time per move (in seconds) */
+	protected double thinkingTime;
 	
 	/** Game name to use */
 	private String gameName = null;
@@ -66,11 +82,36 @@ public class EvalGame
 	public void startExperiment()
 	{
 		final List<String> results = new ArrayList<String>();
-		// TODO create the metrics
+		
+		final List<Metric> metrics = new ArrayList<Metric>();
+		metrics.add(new DurationMoves());
+		metrics.add(new DurationTurns());
+		metrics.add(new DurationTurnsStdDev());
+		metrics.add(new DurationTurnsNotTimeouts());
+		metrics.add(new AdvantageP1());
+		metrics.add(new Balance());
+		metrics.add(new Completion());
+		metrics.add(new Drawishness());
+		metrics.add(new Timeouts());
+		metrics.add(new OutcomeUniformity());
+
 		// TODO add header line to results
 		
 		final Game game = GameLoader.loadGameFromName(gameName, options);
 		game.setMaxMoveLimit(moveLimit);
+		
+		if (aiStrings.size() != game.players().count())
+		{
+			System.err.println("Game has " + game.players().count() + " players, but only " + aiStrings.size() + " AI strings were provided.");
+			return;
+		}
+		
+		final List<AI> aiPlayers = new ArrayList<AI>();
+		aiPlayers.add(null);
+		for (int i = 0; i < aiStrings.size(); i++)
+		{
+			aiPlayers.add(AIFactory.createAI(aiStrings.get(i)));
+		}
 		
 		// Warming up
 		final Trial trial = new Trial(game);
@@ -87,8 +128,44 @@ public class EvalGame
 		}
 
 		System.gc();
+		
+		// TODO should have rotating between AIs for colour switching, but too
+		// lazy to implement it right now as I won't need it for the quick
+		// experiment I want to run
 
-		// TODO Run the trials
+		final List<Trial> storedTrials = new ArrayList<Trial>(numTrials);
+		
+		try
+		{
+			for (int trialIdx = 0; trialIdx < numTrials; ++trialIdx)
+			{
+				game.start(context);
+				for (int p = 1; p <= game.players().count(); ++p)
+					aiPlayers.get(p).initAI(game, p);
+				
+				while (!context.trial().over())
+				{
+					context.model().startNewStep
+					(
+						context, 
+						aiPlayers, 
+						thinkingTime, 
+						-1, -1, 0.0,
+						true, // block call until it returns
+						false, false
+					);
+					
+					while (!context.model().isReady())
+						Thread.sleep(100L);
+				}
+				
+				storedTrials.add(new Trial(context.trial()));
+			}
+		}
+		catch (final InterruptedException e)
+		{
+			e.printStackTrace();
+		}
 		
 		// TODO Save the output data in results list
 
@@ -156,6 +233,12 @@ public class EvalGame
 				.withNumVals("+")
 				.withType(OptionTypes.String));
 		argParse.addOption(new ArgOption()
+				.withNames("--thinking-time")
+				.help("Max allowed thinking time per move (in seconds).")
+				.withDefault(Double.valueOf(1.0))
+				.withNumVals(1)
+				.withType(OptionTypes.Double));
+		argParse.addOption(new ArgOption()
 				.withNames("--export-csv")
 				.help("Filename (or filepath) to write results to. By default writes to ./results.csv")
 				.withDefault("results.csv")
@@ -175,6 +258,7 @@ public class EvalGame
 		experiment.gameName = (String) argParse.getValue("--game-name");
 		experiment.options = (List<String>) argParse.getValue("--game-options");
 		experiment.aiStrings = (List<String>) argParse.getValue("--ai-strings");
+		experiment.thinkingTime = argParse.getValueDouble("--thinking-time");
 		experiment.exportCSV = argParse.getValueString("--export-csv");
 
 		experiment.startExperiment();
