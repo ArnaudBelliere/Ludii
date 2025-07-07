@@ -29,7 +29,7 @@
 (game "Zerg Chess" 
     ("TwoPlayersNorthSouth") 
     (equipment { 
-        (board (rectangle <Rows:num> 8)) 
+        (board (rectangle <Rows:num> <WhitePieces:cols>)) 
         
         ("ChessPawn" "Pawn"
             (or 
@@ -57,20 +57,31 @@
         (start { 
             (place "Pawn1" (sites Row 1))
             (place "Pawn2" (expand (sites Top) steps:(- (- <Rows:num> 3) <EmptyRows:num>)))
-            (place "Rook1" (sites Random (sites Bottom)))
+            (place "Rook1" (sites Random (intersection (sites Bottom) (sites Empty)) num:<WhitePieces:num>))
             (place "King1" (sites Random (intersection (sites Bottom) (sites Empty))))
-            (place "Rook1" (sites Random (intersection (sites Bottom) (sites Empty))))
-            (place "Bishop1" (sites Random (intersection (sites Bottom) (sites Empty))))
-            (place "Bishop1" (sites Random (intersection (sites Bottom) (sites Empty))))
-            (place "Knight1" (sites Random (intersection (sites Bottom) (sites Empty)) num:2))
+            (place "Bishop1" (sites Random (intersection (sites Bottom) (sites Empty)) num:<WhitePieces:num>))
+            (place "Knight1" (sites Random (intersection (sites Bottom) (sites Empty)) num:<WhitePieces:num>))
             (place "Queen1" (sites Random (intersection (sites Bottom) (sites Empty))))
         })
         
         (play 
-            (if "SameTurn"
-                (move Promote (last To) (piece {"Queen" "Knight" "Bishop" "Rook"}) Mover)
-                (forEach Piece)
-            )
+//            (if "SameTurn"
+//                (move Promote (last To) (piece {"Queen" "Knight" "Bishop" "Rook"}) Mover)
+//                (forEach Piece)
+//            )
+			(if (and <WhiteDoubleMove:val> (is Mover P1))
+				(if "SameTurn"
+					(or (forEach Piece) (pass))
+					(forEach Piece (then (moveAgain)))
+				)
+				(if (and <BlackDoubleMove:val> (is Mover P2))
+					(if "SameTurn"
+						(or (forEach Piece) (pass))
+						(forEach Piece (then (moveAgain)))
+					)
+					(forEach Piece)
+				)
+			)
         )
         
         (end {
@@ -96,8 +107,6 @@
     (item "8" <8> "The board has 8 rows.")*
     (item "9" <9> "The board has 9 rows.")
     (item "10" <10> "The board has 10 rows.")
-    (item "11" <11> "The board has 11 rows.")
-    (item "12" <12> "The board has 12 rows.")
     }
 )
 
@@ -105,6 +114,27 @@
     {
     (item "2" <2> "The board has 2 empty rows.")
     (item "3" <3> "The board has 3 rows.")*
+    }
+)
+
+(option "White Bishops Knights Rooks" <WhitePieces> args:{ <num> <cols> }
+	{
+	(item "1" <1> <5> "The White player has 1 bishop, knight, and rook.")
+	(item "2" <2> <8> "The White player has 2 bishops, knights, and rooks.")*
+	}
+)
+
+(option "White Double Move per Turn" <WhiteDoubleMove> args:{ <val> }
+    {
+    (item "No" <False> "The White player makes 1 move per turn.")*
+    (item "Yes" <True> "The White player makes 2 moves per turn.")
+    }
+)
+
+(option "Black Double Move per Turn" <BlackDoubleMove> args:{ <val> }
+    {
+    (item "No" <False> "The Black player makes 1 move per turn.")*
+    (item "Yes" <True> "The Black player makes 2 moves per turn.")
     }
 )
 
