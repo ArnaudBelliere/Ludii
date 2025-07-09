@@ -6,7 +6,11 @@ import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
+
+import org.apache.commons.rng.RandomProviderState;
+import org.apache.commons.rng.core.RandomProviderDefaultState;
 
 import game.Game;
 import main.CommandLineArgParse;
@@ -15,6 +19,8 @@ import main.CommandLineArgParse.OptionTypes;
 import main.StringRoutines;
 import main.UnixPrintWriter;
 import metrics.Metric;
+import metrics.MetricsTracker;
+import metrics.Utils;
 import metrics.single.duration.DurationMoves;
 import metrics.single.duration.DurationTurns;
 import metrics.single.duration.DurationTurnsNotTimeouts;
@@ -81,8 +87,6 @@ public class EvalGame
 	@SuppressWarnings("unchecked")
 	public void startExperiment()
 	{
-		final List<String> results = new ArrayList<String>();
-		
 		final List<Metric> metrics = new ArrayList<Metric>();
 		metrics.add(new DurationMoves());
 		metrics.add(new DurationTurns());
@@ -94,8 +98,7 @@ public class EvalGame
 		metrics.add(new Drawishness());
 		metrics.add(new Timeouts());
 		metrics.add(new OutcomeUniformity());
-
-		// TODO add header line to results
+		final MetricsTracker metricsTracker = new MetricsTracker(metrics);
 		
 		final Game game = GameLoader.loadGameFromName(gameName, options);
 		game.setMaxMoveLimit(moveLimit);
@@ -114,8 +117,8 @@ public class EvalGame
 		}
 		
 		// Warming up
-		final Trial trial = new Trial(game);
-		final Context context = new Context(game, trial);
+		Trial trial = new Trial(game);
+		Context context = new Context(game, trial);
 
 		long stopAt = 0L;
 		long start = System.nanoTime();
@@ -134,11 +137,14 @@ public class EvalGame
 		// experiment I want to run
 
 		final List<Trial> storedTrials = new ArrayList<Trial>(numTrials);
+		final RandomProviderDefaultState[] gameStartRNGStates = new RandomProviderDefaultState[numTrials];
 		
 		try
 		{
 			for (int trialIdx = 0; trialIdx < numTrials; ++trialIdx)
 			{
+				final RandomProviderDefaultState gameStartRngState = (RandomProviderDefaultState) context.rng().saveState();
+				gameStartRNGStates[trialIdx] = gameStartRngState;
 				game.start(context);
 				for (int p = 1; p <= game.players().count(); ++p)
 					aiPlayers.get(p).initAI(game, p);
@@ -167,12 +173,45 @@ public class EvalGame
 			e.printStackTrace();
 		}
 		
-		// TODO Save the output data in results list
+		// Re-play through the trials to compute metrics
+		for (int trialIndex = 0; trialIndex < storedTrials.size(); trialIndex++)
+		{
+			trial = storedTrials.get(trialIndex);
+			final RandomProviderState rngState = gameStartRNGStates[trialIndex];
 
+			// Setup a new instance of the game
+			context = Utils.setupNewContext(game, rngState);
+			metricsTracker.startNewTrial(context, trial);
+
+			// Run the playout.
+			for (int i = trial.numInitialPlacementMoves(); i < trial.numMoves(); i++)
+			{
+				// We go to the next move.
+				context.game().apply(context, trial.getMove(i));
+				metricsTracker.observeNextState(context);
+			}
+			
+			metricsTracker.observeFinalState(context);
+		}
+		
 		try (final PrintWriter writer = new UnixPrintWriter(new File(exportCSV), "UTF-8"))
 		{
-			for (final String toWrite : results)
-				writer.println(StringRoutines.join(",", toWrite));
+			final List<String> headers = new ArrayList<String>();
+			final List<String> resultsRow = new ArrayList<String>();
+			
+			headers.add("Game");
+			resultsRow.add(StringRoutines.quote(game.name() + ";" + StringRoutines.join(";", options)));
+			
+			final Map<String, Double> metricsMap = metricsTracker.finaliseMetrics(game, numTrials);
+			
+			for (final Metric metric : metrics)
+			{
+				headers.add(metric.name());
+				resultsRow.add(String.valueOf(metricsMap.get(metric.name())));
+			}
+			
+			writer.println(StringRoutines.join(",", headers));
+			writer.println(resultsRow);
 		}
 		catch (final FileNotFoundException | UnsupportedEncodingException e)
 		{
