@@ -12,6 +12,7 @@ import skillTraceAnalysis.SkillTraceAnalysis;
 import supplementary.experiments.concepts.ParallelComputeConceptsMultipleGames;
 import supplementary.experiments.debugging.FindCrashingTrial;
 import supplementary.experiments.eval.EvalAgents;
+import supplementary.experiments.eval.EvalGame;
 import supplementary.experiments.eval.EvalGames;
 import supplementary.experiments.eval.EvalGate;
 import supplementary.experiments.eval.ParallelEvalMultiGamesMultiAgents;
@@ -64,6 +65,7 @@ public class PlayerCLI
 					"--eval-agents",
 					"--find-crashing-trial",
 					"--eval-gate",
+					"--eval-game",
 					"--eval-games",
 					"--evol-optim-heuristics",
 					"--ludeme-detection",
@@ -104,6 +106,8 @@ public class PlayerCLI
 			FindCrashingTrial.main(passArgs);
 		else if (command.equalsIgnoreCase("--eval-gate"))
 			EvalGate.main(passArgs);
+		else if (command.equalsIgnoreCase("--eval-game"))
+			EvalGame.main(passArgs);
 		else if (command.equalsIgnoreCase("--eval-games"))
 			EvalGames.main(passArgs);
 		else if (command.equalsIgnoreCase("--evol-optim-heuristics"))
