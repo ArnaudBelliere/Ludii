@@ -207,7 +207,7 @@ public class EvalGame
 			for (final Metric metric : metrics)
 			{
 				headers.add(metric.name());
-				resultsRow.add(String.valueOf(metricsMap.get(metric.name())));
+				resultsRow.add(String.valueOf(metricsMap.get(metric.concept().name())));
 			}
 			
 			writer.println(StringRoutines.join(",", headers));
