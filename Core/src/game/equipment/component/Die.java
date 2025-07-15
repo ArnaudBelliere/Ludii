@@ -109,6 +109,26 @@ public class Die extends Component implements Serializable
 	@Override
 	public int roll(final Context context)
 	{
+		if(getBias()!= null)
+		{
+			// Compute the total weight
+			int totalWeight = 0;
+			for (int w : getBias()) totalWeight += w;
+
+			// Pick a random number in [0, totalWeight]
+			int r = context.rng().nextInt(totalWeight);
+
+			// Find the index corresponding to the random value
+			int index = 0;
+			while (r >= getBias()[index]) {
+			    r -= getBias()[index];
+			    index++;
+			}
+
+			// Use the selected index
+			System.out.println(index);
+			return index;
+		}
 		return (context.rng().nextInt(faces.length));
 	}
 
