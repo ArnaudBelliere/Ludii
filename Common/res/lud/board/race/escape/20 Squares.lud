@@ -87,6 +87,126 @@
 
 (rulesets { 
     
+    (ruleset "Ruleset/No captures free turn seven pieces Seleukid (Experimental)" {
+        
+    })
+    
+    (ruleset "Ruleset/No captures free turn five pieces Seleukid (Experimental)" {
+        
+    })
+    
+    (ruleset "Ruleset/No captures seven pieces Seleukid (Experimental)" {
+        
+    })
+    
+    (ruleset "Ruleset/No capture five pieces Seleukid (Experimental)" {
+        
+    })
+    
+    (ruleset "Ruleset/Free and safe seven pieces Seleukid (Experimental)" {
+        
+    })
+    
+    (ruleset "Ruleset/Free and safe five pieces Seleukid (Experimental)" {
+        
+    })
+    
+    (ruleset "Ruleset/Free turn seven pieces Seleukid (Experimental)" {
+        
+    })
+    
+    (ruleset "Ruleset/Free turn five pieces Seleukid (Experimental)" {
+        
+    })
+    
+    (ruleset "Ruleset/Finkel seven pieces Seleukid (Experimental)" {
+        
+    })
+    
+    (ruleset "Ruleset/Finkel five pieces Seleukid (Experimental)" {
+        
+    })
+    
+    (ruleset "Ruleset/No captures free turn seven pieces astragali (Experimental)" {
+        
+    })
+    
+    (ruleset "Ruleset/No capture free turn five pieces astragali (Experimental)" {
+        
+    })
+    
+    (ruleset "Ruleset/No capture seven pieces astragali (Experimental)" {
+        
+    })
+    
+    (ruleset "Ruleset/No capture five pieces astragali (Experimental)" {
+        
+    })
+    
+    (ruleset "Ruleset/Free and safe seven pieces astragali (Experimental)" {
+        
+    })
+    
+    (ruleset "Ruleset/Free and safe five pieces astragali (Experimental)" {
+        
+    })
+    
+    (ruleset "Ruleset/Free turn seven pieces astragali (Experimental)" {
+        
+    })
+    
+    (ruleset "Ruleset/Free turn five piexces astragali (Experimental)" {
+        
+    })
+    
+    (ruleset "Ruleset/Finkel seven pieces astragali (Experimental)" {
+        
+    })
+    
+    (ruleset "Ruleset/Finkel five pieces astragali (Experimental)" {
+        
+    })
+    
+    (ruleset "Ruleset/No captures free turn seven pieces tetrahedral (Experimental)" {
+        
+    })
+    
+    (ruleset "Ruleset/No captures free turn five pieces tetrahedral (Experimental)" {
+        
+    })
+    
+    (ruleset "Ruleset/No capture seven pieces tetrahedral (Experimental)" {
+        
+    })
+    
+    (ruleset "Ruleset/No capture five pieces tetrahedral (Experimental)" {
+        
+    })
+    
+    (ruleset "Ruleset/Free and safe seven pieces tetrahedral dice (Experimental)" {
+        
+    })
+    
+    (ruleset "Ruleset/Free and safe five pieces tetrahedral (Experimental)" {
+        
+    })
+    
+    (ruleset "Ruleset/Free turn seven pieces tetrahedral (Experimental)" {
+        
+    })
+    
+    (ruleset "Ruleset/Free turn five pieces tetrahedral dice (Experimental)" {
+        
+    })
+    
+    (ruleset "Ruleset/Finkel seven pieces tetrahedral (Experimental)" {
+        
+    })
+    
+    (ruleset "Ruleset/Finkel five pieces tettrahedral (Experimental)" {
+        
+    })
+    
     (ruleset "Ruleset/Historical Information (Incomplete)" {
         
     })
@@ -141,6 +261,65 @@
         (useFor "Ruleset/Historical Information (Incomplete)" (rules "3x4 grid with an extension of eight spaces along the central row. Played with two knucklebones, one small and one large. Five or seven pieces per player. "))
         (useFor "Ruleset/Historical Information (Incomplete)" (source "DLP evidence."))
         (useFor "Ruleset/Historical Information (Incomplete)" (id "530"))
+        (useFor "Ruleset/Finkel five pieces tettrahedral (Experimental)" (rules "Finkel rules, five pieces per player, tetrahedral dice"))
+        (useFor "Ruleset/Finkel five pieces tettrahedral (Experimental)" (id "4347"))
+        (useFor "Ruleset/Finkel seven pieces tetrahedral (Experimental)" (rules "Finkel rules, seven pieces per player. tetrahedral dice"))
+        (useFor "Ruleset/Finkel seven pieces tetrahedral (Experimental)" (id "4348"))
+        (useFor "Ruleset/Free turn five pieces tetrahedral dice (Experimental)" (rules "Free turn on all rosettes, five pieces per player, tetrahedral dice"))
+        (useFor "Ruleset/Free turn five pieces tetrahedral dice (Experimental)" (id "4349"))
+        (useFor "Ruleset/Free turn seven pieces tetrahedral (Experimental)" (rules "Free turn on all rosettes, seven pieces per player, tetrahedral dice"))
+        (useFor "Ruleset/Free turn seven pieces tetrahedral (Experimental)" (id "4350"))
+        (useFor "Ruleset/Free and safe five pieces tetrahedral (Experimental)" (rules "Free and safe on all rosettes, five pieces per player, tetrahedral dice"))
+        (useFor "Ruleset/Free and safe five pieces tetrahedral (Experimental)" (id "4351"))
+        (useFor "Ruleset/Free and safe seven pieces tetrahedral dice (Experimental)" (rules "Free and safe on all rosettes, seven pieces per player, tetrahedral dice"))
+        (useFor "Ruleset/Free and safe seven pieces tetrahedral dice (Experimental)" (id "4352"))
+        (useFor "Ruleset/No capture five pieces tetrahedral (Experimental)" (rules "No captures, five pieces per player, tetrahedral dice"))
+        (useFor "Ruleset/No capture five pieces tetrahedral (Experimental)" (id "4353"))
+        (useFor "Ruleset/No capture seven pieces tetrahedral (Experimental)" (rules "No captures, seven pieces per player, tetrahedral dice"))
+        (useFor "Ruleset/No capture seven pieces tetrahedral (Experimental)" (id "4354"))
+        (useFor "Ruleset/No captures free turn five pieces tetrahedral (Experimental)" (rules "No captures, free turn on all rosettes, five pieces per player, tetrahedral dice"))
+        (useFor "Ruleset/No captures free turn five pieces tetrahedral (Experimental)" (id "4355"))
+        (useFor "Ruleset/No captures free turn seven pieces tetrahedral (Experimental)" (rules "No captures, free turn on all rosettes, seven pieces per player, tetrahedral dice"))
+        (useFor "Ruleset/No captures free turn seven pieces tetrahedral (Experimental)" (id "4356"))
+        (useFor "Ruleset/Finkel five pieces astragali (Experimental)" (rules "Finkel rules, five pieces per player, astragali as dice"))
+        (useFor "Ruleset/Finkel five pieces astragali (Experimental)" (id "4357"))
+        (useFor "Ruleset/Finkel seven pieces astragali (Experimental)" (rules "Finkel rules, seven pieces per player, astragali as dice"))
+        (useFor "Ruleset/Finkel seven pieces astragali (Experimental)" (id "4358"))
+        (useFor "Ruleset/Free turn five piexces astragali (Experimental)" (rules "Free turn on all rosettes, five pieces per player, astragali as dice"))
+        (useFor "Ruleset/Free turn five piexces astragali (Experimental)" (id "4359"))
+        (useFor "Ruleset/Free turn seven pieces astragali (Experimental)" (rules "Free turn on all rosettes, seven pieces per player, astragali as dice"))
+        (useFor "Ruleset/Free turn seven pieces astragali (Experimental)" (id "4360"))
+        (useFor "Ruleset/Free and safe five pieces astragali (Experimental)" (rules "Free and safe on all rosettes, five pieces per player, astragali as dice"))
+        (useFor "Ruleset/Free and safe five pieces astragali (Experimental)" (id "4361"))
+        (useFor "Ruleset/Free and safe seven pieces astragali (Experimental)" (rules "Free and safe on all rosettes, seven pieces per player, astragali as dice"))
+        (useFor "Ruleset/Free and safe seven pieces astragali (Experimental)" (id "4362"))
+        (useFor "Ruleset/No capture five pieces astragali (Experimental)" (rules "No captures, five pieces per player, astragali as dice"))
+        (useFor "Ruleset/No capture five pieces astragali (Experimental)" (id "4363"))
+        (useFor "Ruleset/No capture seven pieces astragali (Experimental)" (id "4364"))
+        (useFor "Ruleset/No capture free turn five pieces astragali (Experimental)" (rules "No captures, free turn on all rosettes, astragali as dice"))
+        (useFor "Ruleset/No capture free turn five pieces astragali (Experimental)" (id "4365"))
+        (useFor "Ruleset/No captures free turn seven pieces astragali (Experimental)" (rules "No captures, free turn on all rosettes, seven pieces per player, astragali as dice"))
+        (useFor "Ruleset/No captures free turn seven pieces astragali (Experimental)" (id "4366"))
+        (useFor "Ruleset/Finkel five pieces Seleukid (Experimental)" (rules "Finkel rules, five pieces per player, Seleukid dice"))
+        (useFor "Ruleset/Finkel five pieces Seleukid (Experimental)" (id "4367"))
+        (useFor "Ruleset/Finkel seven pieces Seleukid (Experimental)" (rules "Finkel rules, seven pieces per player, Seleukid dice"))
+        (useFor "Ruleset/Finkel seven pieces Seleukid (Experimental)" (id "4368"))
+        (useFor "Ruleset/Free turn five pieces Seleukid (Experimental)" (rules "Free turn on all rosettes, five pieces per player, Seleukid dice"))
+        (useFor "Ruleset/Free turn five pieces Seleukid (Experimental)" (id "4369"))
+        (useFor "Ruleset/Free turn seven pieces Seleukid (Experimental)" (rules "Free turn on all rosettes, seven pieces per player, Seleukid dice"))
+        (useFor "Ruleset/Free turn seven pieces Seleukid (Experimental)" (id "4370"))
+        (useFor "Ruleset/Free and safe five pieces Seleukid (Experimental)" (rules "Free and safe on all rosettes, five pieces per player, Seleukid dice"))
+        (useFor "Ruleset/Free and safe five pieces Seleukid (Experimental)" (id "4371"))
+        (useFor "Ruleset/Free and safe seven pieces Seleukid (Experimental)" (rules "Free and safe on all rosettes, seven pieces per player, Seleukid dice"))
+        (useFor "Ruleset/Free and safe seven pieces Seleukid (Experimental)" (id "4372"))
+        (useFor "Ruleset/No capture five pieces Seleukid (Experimental)" (rules "No captures, five pieces per player, Seleukid dice"))
+        (useFor "Ruleset/No capture five pieces Seleukid (Experimental)" (id "4373"))
+        (useFor "Ruleset/No captures seven pieces Seleukid (Experimental)" (rules "No captures, seven pieces per player, Seleukid dice"))
+        (useFor "Ruleset/No captures seven pieces Seleukid (Experimental)" (id "4374"))
+        (useFor "Ruleset/No captures free turn five pieces Seleukid (Experimental)" (rules "No captures, free turn on every rosettes, five pieces per player, Seleukid dice"))
+        (useFor "Ruleset/No captures free turn five pieces Seleukid (Experimental)" (id "4375"))
+        (useFor "Ruleset/No captures free turn seven pieces Seleukid (Experimental)" (rules "No captures, free turn on every rosette, seven pieces per player, Seleukid dice"))
+        (useFor "Ruleset/No captures free turn seven pieces Seleukid (Experimental)" (id "4376"))
         (id "35")
         (version "1.3.14")
         (classification "board/race/escape")
