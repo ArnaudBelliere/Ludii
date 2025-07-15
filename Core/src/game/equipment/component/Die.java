@@ -126,7 +126,6 @@ public class Die extends Component implements Serializable
 			}
 
 			// Use the selected index
-			System.out.println(index);
 			return index;
 		}
 		return (context.rng().nextInt(faces.length));
