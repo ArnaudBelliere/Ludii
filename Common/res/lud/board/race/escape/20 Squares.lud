@@ -82,8 +82,8 @@
         <(count Pips)>
     "Tetrahedral Dice.")
     
-    (item "Astragali" <(dice facesByDie:{{1 2 3 4} {1 2 3 4}} num:2 biased:{3710 3725 1271 1294})> 
-        <(count Pips)>
+    (item "Astragali" <(dice facesByDie:{{1 2 3 4}} num:1 biased:{3710 3725 1271 1294})> 
+    <(count Pips)>
     "Astragali Dice.")
     
     (item "Seleukid" <(dice facesByDie:{{1 2 3 5} {1 2 3 5}} num:2 biased:{3710 3725 1271 1294})> 
