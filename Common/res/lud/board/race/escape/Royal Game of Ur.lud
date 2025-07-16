@@ -29,7 +29,7 @@
         (regions "Safe" <Safe:sites>)
         
         (piece "UrPiece" Each
-            (if ("IsEndTrack" "MoveTo")
+            (if <Escape:rule>
                 "RemoveAPiece"
                 (if ("IsNotOffBoard" "MoveTo") 	 			
                     <Capture:rule>
@@ -166,12 +166,8 @@
 
 (option "Escape" <Escape> args:{ <rule> }
     {
-    (item "End" <
-        "IsEndTrack"
-    > "Remove a Piece in reaching a site +1 after the end.")* 
-    (item "Off" <
-        "IsOffTrack"
-    > "Remove a Piece in reaching any site after the end.")
+    (item "End" <("IsEndTrack" "MoveTo")> "Remove a Piece in reaching a site +1 after the end.")* 
+    (item "Off" <(or ("IsEndTrack" "MoveTo") ("IsOffBoard" "MoveTo"))> "Remove a Piece in reaching any site after the end.")
     }
 )
 
