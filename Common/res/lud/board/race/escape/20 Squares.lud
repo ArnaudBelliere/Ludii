@@ -56,7 +56,7 @@
 (option "NumPieces" <NumPieces> args:{ <num> }
     {
     (item "Seven" <7> "Seven Pieces.")* 
-    (item "Five" <5> "Five Pieces.")*
+    (item "Five" <5> "Five Pieces.")
     }
 )
 
@@ -146,6 +146,12 @@
 //------------------------------------------------------------------------------
 
 (rulesets { 
+	
+    (ruleset "Ruleset/Seleucid (Scholarly)" 
+            {
+            "NumPieces/Seven" "Dice/Seleucid" "Replay/Corners" "Safe/Middle" "Capture/Yes"
+            }
+    )
     
     (ruleset "Ruleset/No captures free turn seven pieces Seleukid (Experimental)" {
         "NumPieces/Seven" "Dice/Seleukid" "Replay/All" "Safe/None" "Capture/No"
@@ -286,12 +292,6 @@
     (ruleset "Ruleset/Simple 20 Squares (Incomplete)" {
         
     })
-    
-    (ruleset "Ruleset/Seleucid (Scholarly)" 
-        {
-        "NumPieces/Seven" "Dice/Seleucid" "Replay/Corners" "Safe/Middle" "Capture/Yes"
-        }
-    )
     
 })
 
