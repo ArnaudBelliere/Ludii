@@ -29,10 +29,10 @@
         (regions "Safe" <Safe:sites>)
         
         (piece "UrPiece" Each
-            (if ("IsEndTrack" ("MoveTo"))
+            (if (<Escape:rule> ("MoveTo"))
                 "RemoveAPiece"
                 (if ("IsNotOffBoard" ("MoveTo"))	
-                	<Capture:rule>
+                    <Capture:rule>
                 )
             )
         ) 
@@ -83,12 +83,16 @@
     "Tetrahedral Dice.")
     
     (item "Astragali" <(dice facesByDie:{{1 2 3 4}} num:1 biased:{3710 3725 1271 1294})> 
-    <(count Pips)>
+        <(count Pips)>
     "Astragali Dice.")
     
     (item "Seleukid" <(dice facesByDie:{{1 2 3 5} {1 2 3 5}} num:2 biased:{3710 3725 1271 1294})> 
         <(count Pips)>
     "Seleukid Dice.")
+    
+    (item "D6" <(dice d:6 num:1)> 
+        <(count Pips)>
+    "One D6 Dice.")
     }
 )
 
@@ -108,169 +112,218 @@
 )
 
 (option "Capture" <Capture> args:{ <rule> }
-{
-(item "Yes" <
-		(if (or
-		        (is Empty ("MoveTo"))
-		        (and 
-		            (not ("IsFriendAt" ("MoveTo"))) 
-		            (not (is In ("MoveTo") (sites "Safe")))
-		        )
-		    )
-		    (move 
-		        (from) 
-		        (to 
-		            ("MoveTo")
-		            ("HittingCapture" (handSite (who at:(to))))
-		        )
-		        (then ("ReplayInMovingOn" (sites "Replay")))
-		    )
-		)
-		> "Capture is allowed.")* 
-(item "No" <
-		(if (is Empty ("MoveTo"))
-		    (move 
-		        (from) 
-		        (to 
-		            ("MoveTo")
-		        )
-		        (then ("ReplayInMovingOn" (sites "Replay")))
-		    )
-		)
-		> "No Capture.")
-}
+    {
+    (item "Yes" <
+        (if (or
+                (is Empty ("MoveTo"))
+                (and 
+                    (not ("IsFriendAt" ("MoveTo"))) 
+                    (not (is In ("MoveTo") (sites "Safe")))
+                )
+            )
+            (move 
+                (from) 
+                (to 
+                    ("MoveTo")
+                    ("HittingCapture" (handSite (who at:(to))))
+                )
+                (then ("ReplayInMovingOn" (sites "Replay")))
+            )
+        )
+    > "Capture is allowed.")* 
+    (item "No" <
+        (if (is Empty ("MoveTo"))
+            (move 
+                (from) 
+                (to 
+                    ("MoveTo")
+                )
+                (then ("ReplayInMovingOn" (sites "Replay")))
+            )
+        )
+    > "No Capture.")
+    }
 )
 
-
+(option "Escape" <Escape> args:{ <rule> }
+    {
+    (item "End" <
+        "IsEndTrack"
+    > "Remove a Piece in reaching a site +1 after the end.")* 
+    (item "Off" <
+        "IsOffTrack"
+    > "Remove a Piece in reaching any site after the end.")
+    }
+)
 
 //------------------------------------------------------------------------------
 
 (rulesets { 
-	
+    
     (ruleset "Ruleset/Seleucid (Scholarly)" 
-            {
-            "NumPieces/Seven" "Dice/Seleucid" "Replay/Corners" "Safe/Middle" "Capture/Yes"
-            }
+        {
+        "NumPieces/Seven" "Dice/Seleucid" "Replay/Corners" "Safe/Middle" "Capture/Yes" "Escape/End"
+        }
     )
     
     (ruleset "Ruleset/No captures free turn seven pieces Seleukid (Experimental)" {
-        "NumPieces/Seven" "Dice/Seleukid" "Replay/All" "Safe/None" "Capture/No"
+        "NumPieces/Seven" "Dice/Seleukid" "Replay/All" "Safe/None" "Capture/No" "Escape/Off"
     })
     
     (ruleset "Ruleset/No captures free turn five pieces Seleukid (Experimental)" {
-        "NumPieces/Five" "Dice/Seleukid" "Replay/All" "Safe/None" "Capture/No"
+        "NumPieces/Five" "Dice/Seleukid" "Replay/All" "Safe/None" "Capture/No" "Escape/Off"
     })
     
     (ruleset "Ruleset/No captures seven pieces Seleukid (Experimental)" {
-        "NumPieces/Seven" "Dice/Seleukid" "Replay/None" "Safe/None" "Capture/No"
+        "NumPieces/Seven" "Dice/Seleukid" "Replay/None" "Safe/None" "Capture/No" "Escape/Off"
     })
     
     (ruleset "Ruleset/No capture five pieces Seleukid (Experimental)" {
-        "NumPieces/Five" "Dice/Seleukid" "Replay/None" "Safe/None" "Capture/No"
+        "NumPieces/Five" "Dice/Seleukid" "Replay/None" "Safe/None" "Capture/No" "Escape/Off"
     })
     
     (ruleset "Ruleset/Free and safe seven pieces Seleukid (Experimental)" {
-        "NumPieces/Seven" "Dice/Seleukid" "Replay/All" "Safe/Middle" "Capture/Yes"
+        "NumPieces/Seven" "Dice/Seleukid" "Replay/All" "Safe/Middle" "Capture/Yes" "Escape/Off"
     })
     
     (ruleset "Ruleset/Free and safe five pieces Seleukid (Experimental)" {
-        "NumPieces/Five" "Dice/Seleukid" "Replay/All" "Safe/Middle" "Capture/Yes"
+        "NumPieces/Five" "Dice/Seleukid" "Replay/All" "Safe/Middle" "Capture/Yes" "Escape/Off"
     })
     
     (ruleset "Ruleset/Free turn seven pieces Seleukid (Experimental)" {
-        "NumPieces/Seven" "Dice/Seleukid" "Replay/All" "Safe/None" "Capture/Yes"
+        "NumPieces/Seven" "Dice/Seleukid" "Replay/All" "Safe/None" "Capture/Yes" "Escape/Off"
     })
     
     (ruleset "Ruleset/Free turn five pieces Seleukid (Experimental)" {
-        "NumPieces/Five" "Dice/Seleukid" "Replay/All" "Safe/None" "Capture/Yes"
+        "NumPieces/Five" "Dice/Seleukid" "Replay/All" "Safe/None" "Capture/Yes" "Escape/Off"
     })
     
     (ruleset "Ruleset/Finkel seven pieces Seleukid (Experimental)" {
-        "NumPieces/Seven" "Dice/Seleukid" "Replay/Corners" "Safe/Middle" "Capture/Yes"
+        "NumPieces/Seven" "Dice/Seleukid" "Replay/Corners" "Safe/Middle" "Capture/Yes" "Escape/Off"
     })
     
     (ruleset "Ruleset/Finkel five pieces Seleukid (Experimental)" {
-        "NumPieces/Five" "Dice/Seleukid" "Replay/Corners" "Safe/Middle" "Capture/Yes"
+        "NumPieces/Five" "Dice/Seleukid" "Replay/Corners" "Safe/Middle" "Capture/Yes" "Escape/Off"
     })
     
     (ruleset "Ruleset/No captures free turn seven pieces astragali (Experimental)" {
-        "NumPieces/Seven" "Dice/Astragali" "Replay/All" "Safe/None" "Capture/No"
+        "NumPieces/Seven" "Dice/Astragali" "Replay/All" "Safe/None" "Capture/No" "Escape/Off"
     })
     
     (ruleset "Ruleset/No capture free turn five pieces astragali (Experimental)" {
-        "NumPieces/Five" "Dice/Astragali" "Replay/All" "Safe/None" "Capture/No"
+        "NumPieces/Five" "Dice/Astragali" "Replay/All" "Safe/None" "Capture/No" "Escape/Off"
     })
     
     (ruleset "Ruleset/No capture seven pieces astragali (Experimental)" {
-        "NumPieces/Seven" "Dice/Astragali" "Replay/None" "Safe/None" "Capture/No"  
+        "NumPieces/Seven" "Dice/Astragali" "Replay/None" "Safe/None" "Capture/No" "Escape/Off"
     })
     
     (ruleset "Ruleset/No capture five pieces astragali (Experimental)" {
-        "NumPieces/Five" "Dice/Astragali" "Replay/None" "Safe/None" "Capture/No"
+        "NumPieces/Five" "Dice/Astragali" "Replay/None" "Safe/None" "Capture/No" "Escape/Off"
     })
     
     (ruleset "Ruleset/Free and safe seven pieces astragali (Experimental)" {
-        "NumPieces/Seven" "Dice/Astragali" "Replay/All" "Safe/Middle" "Capture/Yes"
+        "NumPieces/Seven" "Dice/Astragali" "Replay/All" "Safe/Middle" "Capture/Yes" "Escape/Off"
     })
     
     (ruleset "Ruleset/Free and safe five pieces astragali (Experimental)" {
-        "NumPieces/Five" "Dice/Astragali" "Replay/All" "Safe/Middle" "Capture/Yes"  
+        "NumPieces/Five" "Dice/Astragali" "Replay/All" "Safe/Middle" "Capture/Yes" "Escape/Off" 
     })
     
     (ruleset "Ruleset/Free turn seven pieces astragali (Experimental)" {
-        "NumPieces/Seven" "Dice/Astragali" "Replay/All" "Safe/None" "Capture/Yes"
+        "NumPieces/Seven" "Dice/Astragali" "Replay/All" "Safe/None" "Capture/Yes" "Escape/Off"
     })
     
     (ruleset "Ruleset/Free turn five piexces astragali (Experimental)" {
-        "NumPieces/Five" "Dice/Astragali" "Replay/All" "Safe/None" "Capture/Yes"
+        "NumPieces/Five" "Dice/Astragali" "Replay/All" "Safe/None" "Capture/Yes" "Escape/Off"
     })
     
     (ruleset "Ruleset/Finkel seven pieces astragali (Experimental)" {
-        "NumPieces/Seven" "Dice/Astragali" "Replay/Corners" "Safe/Middle" "Capture/Yes"
+        "NumPieces/Seven" "Dice/Astragali" "Replay/Corners" "Safe/Middle" "Capture/Yes" "Escape/Off"
     })
     
     (ruleset "Ruleset/Finkel five pieces astragali (Experimental)" {
-        "NumPieces/Five" "Dice/Astragali" "Replay/Corners" "Safe/Middle" "Capture/Yes"  
+        "NumPieces/Five" "Dice/Astragali" "Replay/Corners" "Safe/Middle" "Capture/Yes" "Escape/Off" 
     })
     
     (ruleset "Ruleset/No captures free turn seven pieces tetrahedral (Experimental)" {
-        "NumPieces/Seven" "Dice/Tetrahedral" "Replay/All" "Safe/None" "Capture/No"
+        "NumPieces/Seven" "Dice/Tetrahedral" "Replay/All" "Safe/None" "Capture/No" "Escape/Off"
     })
     
     (ruleset "Ruleset/No captures free turn five pieces tetrahedral (Experimental)" {
-        "NumPieces/Five" "Dice/Tetrahedral" "Replay/All" "Safe/None" "Capture/No"
+        "NumPieces/Five" "Dice/Tetrahedral" "Replay/All" "Safe/None" "Capture/No" "Escape/Off"
     })
     
     (ruleset "Ruleset/No capture seven pieces tetrahedral (Experimental)" {
-        "NumPieces/Seven" "Dice/Tetrahedral" "Replay/None" "Safe/None" "Capture/No"
+        "NumPieces/Seven" "Dice/Tetrahedral" "Replay/None" "Safe/None" "Capture/No" "Escape/Off"
     })
     
     (ruleset "Ruleset/No capture five pieces tetrahedral (Experimental)" {
-        "NumPieces/Five" "Dice/Tetrahedral" "Replay/None" "Safe/None" "Capture/No"
+        "NumPieces/Five" "Dice/Tetrahedral" "Replay/None" "Safe/None" "Capture/No" "Escape/Off"
     })
     
     (ruleset "Ruleset/Free and safe seven pieces tetrahedral dice (Experimental)" {
-        "NumPieces/Seven" "Dice/Tetrahedral" "Replay/All" "Safe/Middle" "Capture/Yes"
+        "NumPieces/Seven" "Dice/Tetrahedral" "Replay/All" "Safe/Middle" "Capture/Yes" "Escape/Off"
     })
     
     (ruleset "Ruleset/Free and safe five pieces tetrahedral (Experimental)" {
-        "NumPieces/Five" "Dice/Tetrahedral" "Replay/All" "Safe/Middle" "Capture/Yes" 
+        "NumPieces/Five" "Dice/Tetrahedral" "Replay/All" "Safe/Middle" "Capture/Yes" "Escape/Off"
     })
     
     (ruleset "Ruleset/Free turn seven pieces tetrahedral (Experimental)" {
-        "NumPieces/Seven" "Dice/Tetrahedral" "Replay/All" "Safe/None" "Capture/Yes"
+        "NumPieces/Seven" "Dice/Tetrahedral" "Replay/All" "Safe/None" "Capture/Yes" "Escape/Off"
     })
     
     (ruleset "Ruleset/Free turn five pieces tetrahedral dice (Experimental)" {
-        "NumPieces/Five" "Dice/Tetrahedral" "Replay/All" "Safe/None" "Capture/Yes"
+        "NumPieces/Five" "Dice/Tetrahedral" "Replay/All" "Safe/None" "Capture/Yes" "Escape/Off"
     })
     
     (ruleset "Ruleset/Finkel seven pieces tetrahedral (Experimental)" {
-        "NumPieces/Seven" "Dice/Tetrahedral" "Replay/Corners" "Safe/Middle" "Capture/Yes"
+        "NumPieces/Seven" "Dice/Tetrahedral" "Replay/Corners" "Safe/Middle" "Capture/Yes" "Escape/Off"
     })
     
     (ruleset "Ruleset/Finkel five pieces tettrahedral (Experimental)" {
-        "NumPieces/Five" "Dice/Tetrahedral" "Replay/Corners" "Safe/Middle" "Capture/Yes"  
+        "NumPieces/Five" "Dice/Tetrahedral" "Replay/Corners" "Safe/Middle" "Capture/Yes" "Escape/Off" 
+    })
+    
+    (ruleset "Ruleset/No capture, free turn, 7 pieces, D6 (Experimental)" {
+        "NumPieces/Seven" "Dice/D6" "Replay/All" "Safe/None" "Capture/No" "Escape/Off"
+    })
+    
+    (ruleset "Ruleset/No capture, free turn, 5 pieces, D6 (Experimental)" {
+        "NumPieces/Five" "Dice/D6" "Replay/All" "Safe/None" "Capture/No" "Escape/Off"
+    })
+    
+    (ruleset "Ruleset/No capture, 7 pieces, D6 (Experimental)" {
+        "NumPieces/Seven" "Dice/D6" "Replay/None" "Safe/None" "Capture/No" "Escape/Off"
+    })
+    
+    (ruleset "Ruleset/No capture, 5 pieces, D6 (Experimental)" {
+        "NumPieces/Five" "Dice/D6" "Replay/None" "Safe/None" "Capture/No" "Escape/Off"
+    })
+    
+    (ruleset "Ruleset/Free and safe, 7 pieces, D6 (Experimental)" {
+        "NumPieces/Seven" "Dice/D6" "Replay/All" "Safe/Middle" "Capture/Yes" "Escape/Off"
+    })
+    
+    (ruleset "Ruleset/Free and safe, 5 pieces, D6 (Experimental)" {
+        "NumPieces/Five" "Dice/D6" "Replay/All" "Safe/Middle" "Capture/Yes" "Escape/Off"
+    })
+    
+    (ruleset "Ruleset/Free, 7 pieces, D6 (Experimental)" {
+        "NumPieces/Seven" "Dice/D6" "Replay/All" "Safe/None" "Capture/Yes" "Escape/Off"
+    })
+    
+    (ruleset "Ruleset/Free, 5 pieces, D6 (Experimental)" {
+        "NumPieces/Five" "Dice/D6" "Replay/All" "Safe/None" "Capture/Yes" "Escape/Off"
+    })
+    
+    (ruleset "Ruleset/Finkel, 7 pieces, D6 (Experimental)" {
+        "NumPieces/Seven" "Dice/D6" "Replay/Corners" "Safe/Middle" "Capture/Yes" "Escape/Off"
+    })
+    
+    (ruleset "Ruleset/Finkel, 5 pieces, D6 (Experimental)" {
+        "NumPieces/Five" "Dice/D6" "Replay/Corners" "Safe/Middle" "Capture/Yes" "Escape/Off"
     })
     
     (ruleset "Ruleset/Historical Information (Incomplete)" {
@@ -315,14 +368,12 @@
         (useFor "Ruleset/Double 20 Squares (Incomplete)" (rules "Two twenty squares boards connected via the long central track forming a dumbbell shape with 31 playing spaces. Spaces marked at squares 4, 8, 12, 16, 20 on each board."))
         (useFor "Ruleset/Double 20 Squares (Incomplete)" (source "Future reconstruction."))
         (useFor "Ruleset/Double 20 Squares (Incomplete)" (id "14"))
-        
         (useFor "Ruleset/Seleucid (Scholarly)" (rules "Boards consist of a grid of 3x4 squares and a continuation of the central row in the grid that extends for 8 further squares. The game is played with two astragals as dice: one from a sheep and one from an ox. The sheep astragal provides the base value for the roll, and the ox astragal serves as a bonus. Rolls of the sheep astragal produce values of 1, 2 ,3 or 4. The ox astragal produces a \"yes\" or \"no\" value. If \"no\" is rolled, the values remain the same. If \"yes\" is rolled, the value of the first roll is boosted to 5, 6, 7, or 10, respectively. These rules are proposed by Finkel based on the values of moves provided in the cuneiform tablets (Finkel 2007: 21–22). Each player starts play on one of the right corners of the 3x4 grid, proceeding left down that row to the opposite corner, and then right down the central track, which both players use, with the goal of moving off the end of the track. If a player lands on a square occupied by the opponent, the opponent's piece is removed from the board and may reenter on a subsequent turn. Rosettes on certain squares in the central track mark spaces where a player is safe from being sent to the beginning. Rosettes in the corners allow a player to roll again when a player lands on them. A player wins when they remove all seven of their pieces from the board by rolling the exact number of spaces left in the track, plus one."))
         (useFor "Ruleset/Seleucid (Scholarly)" (source "Finkel 2007."))
         (useFor "Ruleset/Seleucid (Scholarly)" (id "35"))
         (useFor "Ruleset/Historical Information (Incomplete)" (rules "3x4 grid with an extension of eight spaces along the central row. Played with two knucklebones, one small and one large. Five or seven pieces per player. "))
         (useFor "Ruleset/Historical Information (Incomplete)" (source "DLP evidence."))
         (useFor "Ruleset/Historical Information (Incomplete)" (id "530"))
-        
         (useFor "Ruleset/Finkel five pieces tettrahedral (Experimental)" (rules "Finkel rules, five pieces per player, tetrahedral dice"))
         (useFor "Ruleset/Finkel five pieces tettrahedral (Experimental)" (id "4347"))
         (useFor "Ruleset/Finkel seven pieces tetrahedral (Experimental)" (rules "Finkel rules, seven pieces per player. tetrahedral dice"))
@@ -382,6 +433,26 @@
         (useFor "Ruleset/No captures free turn five pieces Seleukid (Experimental)" (id "4375"))
         (useFor "Ruleset/No captures free turn seven pieces Seleukid (Experimental)" (rules "No captures, free turn on every rosette, seven pieces per player, Seleukid dice"))
         (useFor "Ruleset/No captures free turn seven pieces Seleukid (Experimental)" (id "4376"))
+        (useFor "Ruleset/Finkel, 5 pieces, D6 (Experimental)" (rules "Free turn on corner rosettes, safe in center rosettes, five pieces per player, D6"))
+        (useFor "Ruleset/Finkel, 5 pieces, D6 (Experimental)" (id "4387"))
+        (useFor "Ruleset/Finkel, 7 pieces, D6 (Experimental)" (rules "Free turn on corner rosettes, safe on center rosettes, seven pieces per player, D6"))
+        (useFor "Ruleset/Finkel, 7 pieces, D6 (Experimental)" (id "4388"))
+        (useFor "Ruleset/Free, 5 pieces, D6 (Experimental)" (rules "Free turn on rosettes, five pieces per player, D6"))
+        (useFor "Ruleset/Free, 5 pieces, D6 (Experimental)" (id "4389"))
+        (useFor "Ruleset/Free, 7 pieces, D6 (Experimental)" (rules "Free turn on rosettes, seven pieces per player, D6"))
+        (useFor "Ruleset/Free, 7 pieces, D6 (Experimental)" (id "4390"))
+        (useFor "Ruleset/Free and safe, 5 pieces, D6 (Experimental)" (rules "Free turn and safe on rosettes, five pieces per player, D6"))
+        (useFor "Ruleset/Free and safe, 5 pieces, D6 (Experimental)" (id "4391"))
+        (useFor "Ruleset/Free and safe, 7 pieces, D6 (Experimental)" (rules "Free turn and safe on rosettes, seven pieces per player, D6"))
+        (useFor "Ruleset/Free and safe, 7 pieces, D6 (Experimental)" (id "4392"))
+        (useFor "Ruleset/No capture, 5 pieces, D6 (Experimental)" (rules "No captures, five pieces per player, D6"))
+        (useFor "Ruleset/No capture, 5 pieces, D6 (Experimental)" (id "4393"))
+        (useFor "Ruleset/No capture, 7 pieces, D6 (Experimental)" (rules "No captures, seven pieces per player, D6"))
+        (useFor "Ruleset/No capture, 7 pieces, D6 (Experimental)" (id "4394"))
+        (useFor "Ruleset/No capture, free turn, 5 pieces, D6 (Experimental)" (rules "No captures, free turn on rosettes, five pieces per player, D6"))
+        (useFor "Ruleset/No capture, free turn, 5 pieces, D6 (Experimental)" (id "4395"))
+        (useFor "Ruleset/No capture, free turn, 7 pieces, D6 (Experimental)" (rules "No captures, free turn on rosettes, seven pieces per player, D6"))
+        (useFor "Ruleset/No capture, free turn, 7 pieces, D6 (Experimental)" (id "4396"))
         (id "35")
         (version "1.3.14")
         (classification "board/race/escape")
